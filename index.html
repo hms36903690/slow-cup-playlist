@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211745";
+  var APP_VERSION = "202611211750";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -225,7 +225,12 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .lyr-top h3{margin:0;font-size:13px;color:var(--ink)}
 .folded .lyr-grid{display:none}
 .yt-tracks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}
-.yt-tracks li{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);align-items:baseline}
+.yt-tracks li{border-bottom:1px solid var(--line)}
+.yt-tracks .trk{font:inherit;color:inherit;text-align:left;width:100%;background:none;border:none;display:grid;grid-template-columns:62px 1fr;gap:8px;padding:8px 10px;align-items:baseline;cursor:pointer}
+.yt-tracks .trk:hover{background:var(--chip)}
+.yt-tracks .trk.sel{background:var(--accent);color:var(--on-accent)}
+.yt-tracks .trk.sel .tt,.yt-tracks .trk.sel .meta{color:var(--on-accent)}
+.yt-mode{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:13.5px;background:var(--surface);border:1px solid var(--brass);border-radius:10px;padding:10px 12px;scroll-margin-top:80px}
 .yt-tracks li:last-child{border-bottom:none}
 .yt-tracks .tt{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600;font-size:13px}
 .yt-tracks .tn{display:flex;flex-direction:column;min-width:0}
@@ -347,6 +352,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
         <p class="meta" style="flex:1 1 220px;margin:0">만들기 탭에서 <b>한번에 만들기</b>를 누르면 그 곡들이 여기에 들어와요. 보관함에서 <b>영상용으로 선택</b>한 곡도 있으면 위에서 고를 수 있어요. 시간은 평균 길이로 계산한 대략값이니 실제 곡 길이에 맞게 고쳐 주세요.</p>
       </div>
     </div>
+    <div class="yt-mode" id="ytMode"></div>
     <div class="panel" id="thumbPanel">
       <div class="block-head"><h3>썸네일 시안</h3><span class="meta">1280 × 720 · 유튜브 권장 크기</span></div>
       <div class="grid">
@@ -1109,7 +1115,7 @@ const TH_COLORS={light:"#f6efe1",white:"#ffffff",warm:"#ffe0a3"};
 const LAYOUTS=[{id:"left",ko:"왼쪽 큰 글씨"},{id:"center",ko:"가운데"},{id:"band",ko:"아래 띠"}];
 let thLayout="left",thSeed=1,thImg=null,thEdited=false;
 function srand(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function sceneKey(){const v=$("thBg").value;return v==="auto"?cfg().mood:v}
+function sceneKey(){const v=$("thBg").value;const sel=(typeof ytSel!=="undefined"&&ytSel!=null)?list[ytSel]:null;return v==="auto"?(sel&&sel.mood||cfg().mood):v}
 function drawScene(x,W,H){
   const S=SCENES[sceneKey()]||SCENES.rain,r=srand(thSeed*7919+W);
   if(thImg){ // user image, cover-fit
@@ -1177,6 +1183,8 @@ function drawText(x,W,H,layout){
 }
 function renderThumb(W,H,layout){const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");drawScene(x,W,H);drawText(x,W,H,layout);return c}
 function refillThumbText(){
+  const sel=ytSel!=null?list[ytSel]:null;
+  if(sel){const M=MOODS[sel.mood]||MOODS.rain,S=STYLES[sel.style]||STYLES.bossa;$("thL1").value=(sel.titleKo||M.ko).slice(0,16);$("thL2").value=S.ko.slice(0,16);$("thSub").value=`${sel.title} · ${sel.bpm} BPM`.slice(0,32);thEdited=false;return}
   const M=MOODS[cfg().mood],mins=list.length*(parseFloat($("avg").value)||3.2);
   const dur=!list.length||mins<90?"1시간":Math.round(mins/60)+"시간";
   $("thL1").value=M.ko;$("thL2").value="카페 재즈";$("thSub").value=`${dur} · ${M.en} Café Jazz`;thEdited=false;
@@ -1461,16 +1469,58 @@ $("reroll").onclick=()=>{renderOne();$("aiNote").textContent=""};
 ["mood","place","style","vocal","lang"].forEach(id=>$(id).addEventListener("change",()=>{save();renderOne();renderYT();$("aiNote").textContent=""}));
 ["channel","avg"].forEach(id=>$(id).addEventListener("change",()=>{save();syncTracks()}));
 
+let ytSel=null; // index in list of the song the upload texts are written for (null = whole playlist)
 function renderYtTracks(){
   const avg=(parseFloat($("avg").value)||3.2)*60;let t=0;
-  $("ytTracks").innerHTML=list.length?`<ol class="yt-tracks">${list.map(s=>{const st=STYLES[s.style];const r=`<li><span class="tt">${fmt(t)}</span><div class="tn"><b>${h(s.title)}</b><span class="meta">${h(s.titleKo||"")} · ${h(st?st.ko:s.style)} · ${h(s.bpm)} BPM · ${h(VOCAL_KO[s.vocal]||"")}</span></div></li>`;t+=avg;return r}).join("")}</ol>`
+  $("ytTracks").innerHTML=list.length?`<ol class="yt-tracks">${list.map((s,i)=>{const st=STYLES[s.style];const r=`<li><button type="button" class="trk${ytSel===i?" sel":""}" data-ysel="${i}" aria-pressed="${ytSel===i}"><span class="tt">${fmt(t)}</span><span class="tn"><b>${h(s.title)}</b><span class="meta">${h(s.titleKo||"")} · ${h(st?st.ko:s.style)} · ${h(s.bpm)} BPM · ${h(VOCAL_KO[s.vocal]||"")}</span></span></button></li>`;t+=avg;return r}).join("")}</ol>`
     :'<div class="empty">아직 곡이 없어요. <b>만들기</b> 탭의 <b>플레이리스트 만들기</b>에서 <b>한번에 만들기</b>를 누르면 여기에 곡 목록이 나와요.</div>';
 }
+function renderYtMode(){
+  const s=ytSel!=null?list[ytSel]:null;
+  $("ytMode").innerHTML=s?`<span>📌 지금 아래 문구는 <b>${h(s.title)}</b> 한 곡 기준이에요.</span><button type="button" class="btn ghost small" data-yall>전체 플레이리스트 기준으로</button>`
+    :`<span>지금 아래 문구는 <b>전체 플레이리스트</b> 기준이에요. 위 목록에서 곡을 누르면 그 곡 기준으로 바뀌어요.</span>`;
+}
+// Upload texts for one song: titles, thumbnail lines, description (with its lyrics) and tags.
+function renderYTSong(s){
+  const M=MOODS[s.mood]||MOODS.rain,P=PLACES[s.place]||PLACES.cafe,S=STYLES[s.style]||STYLES.bossa,ch=$("channel").value.trim()||"Slow Cup Jazz";
+  const sname=S.name.split(",")[0].replace(/\b\w/g,x=>x.toUpperCase()),ko=s.titleKo||s.title;
+  const titles=[`${s.title} | ${M.ko} ${S.ko}`,`${ko} — ${M.ko}, ${P.ko}에서 듣는 ${S.ko}`,`${s.title} (${ko}) · ${sname} for ${M.en}`,`${M.ko}에 듣기 좋은 ${S.ko} | ${s.title}`,`${s.title} · ${M.en} ${P.en} Jazz | ${ch}`];
+  $("ytTitles").textContent=titles.join("\n\n");
+  $("ytThumb").textContent=[`${ko}\n${S.ko}`,`${s.title}`,`${M.ko}\n${ko}`,`${S.ko}\n${s.bpm} BPM`].join("\n\n");
+  const p=lyrPair(s),inst=s.vocal==="inst"||s.vocal==="scat";
+  const lyr=inst||(!p.en&&!p.ko)?"":`\n\n📝 가사 · Lyrics\n${[p.en,p.ko].filter(Boolean).join("\n\n")}`;
+  const clean=t=>"#"+String(t).replace(/[^\p{L}\p{N}]/gu,"");
+  const tags=["#카페재즈",clean(S.ko),clean(M.ko+"재즈"),clean(s.title),"#cafejazz",clean(sname),"#jazzplaylist"];
+  $("ytTags").textContent=[...new Set(tags)].join(" ")+"\n\n[태그 칸]\n"+[s.title,ko,S.ko,sname.toLowerCase(),`${M.ko} 재즈`,`${P.ko} 음악`,"카페 재즈","cafe jazz",`${M.en.toLowerCase()} jazz`,"relaxing jazz"].join(", ");
+  $("ytDesc").textContent=`${s.title} (${ko})
+${M.ko}, ${P.ko}에 어울리는 ${S.ko} 한 곡입니다.
+A ${sname.toLowerCase()} piece for ${M.en.toLowerCase()} ${P.en.toLowerCase()} moments.
+
+🎵 곡 정보
+장르: ${S.ko} (${sname})
+빠르기: ${s.bpm} BPM · 키: ${s.key}
+보컬: ${VOCAL_KO[s.vocal]||""}${lyr}
+
+☕ ${ch}
+요일마다 날씨와 시간에 맞는 카페 재즈를 올립니다. 구독해 두시면 새 플레이리스트를 받아 보실 수 있어요.
+
+🎧 음악 안내
+• 이 곡은 AI 음악 도구(Suno 유료 플랜)로 제작한 뒤 직접 곡 선정, 편집, 마스터링을 거친 창작물입니다.
+• 영상 배경 이미지는 AI 이미지 도구로 직접 제작했습니다.
+(실제 사용 도구와 플랜에 맞게 고쳐 쓰세요)
+
+${[...new Set(tags)].join(" ")}`;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-ysel]");
+  if(b){const i=+b.dataset.ysel;ytSel=ytSel===i?null:i;thEdited=false;renderYT();renderYtTracks();$("ytMode").scrollIntoView({behavior:"smooth",block:"start"});return}
+  if(e.target.closest("[data-yall]")){ytSel=null;thEdited=false;renderYT();renderYtTracks()}
+});
 function syncTracks(){
   const picked=Store.all("song").filter(s=>s.status==="picked").sort((a,b)=>(a.created||"").localeCompare(b.created||""));
   if(trackSrc==="picked"&&!picked.length)trackSrc="batch";
   if(trackSrc==="batch"&&!batch.length&&picked.length)trackSrc="picked";
-  list=trackSrc==="picked"?picked:batch;
+  const nl=trackSrc==="picked"?picked:batch;if(nl!==list)ytSel=null;list=nl;if(ytSel!=null&&ytSel>=list.length)ytSel=null;
   const mins=Math.round(list.length*(parseFloat($("avg").value)||3.2));
   const chip=(k,lab,n)=>`<button type="button" class="chip" data-tsrc="${k}" aria-pressed="${trackSrc===k}">${lab} ${n}곡</button>`;
   $("ytSource").textContent=list.length?`${list.length}곡 · 약 ${mins}분`:"";
@@ -1484,7 +1534,7 @@ renderOne();renderLib();renderPlan();renderLog();syncTracks();
 try{const v=localStorage.getItem("slowcup-view");if(VIEWS.includes(v))go(v)}catch(e){}
 initStore();initAI();
 const _renderOne=renderOne;renderOne=function(){_renderOne();updateRead()};updateRead();
-const _renderYT=renderYT;renderYT=function(){_renderYT();if(!thEdited)refillThumbText();drawThumbs()};
+const _renderYT=renderYT;renderYT=function(){const sel=ytSel!=null?list[ytSel]:null;if(sel)renderYTSong(sel);else _renderYT();if(!thEdited)refillThumbText();drawThumbs();renderYtMode()};
 refillThumbText();drawThumbs();thFontsReady.then(drawThumbs);
 </script>
 
