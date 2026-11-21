@@ -128,7 +128,7 @@ summary{cursor:pointer;font-weight:600}
 .ai{border-color:var(--brass);color:var(--brass)}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
   padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabbar .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabbar .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 .tabbar button{font:inherit;font-size:11.5px;font-weight:600;background:none;border:none;color:var(--muted);padding:8px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;min-width:0}
 .tabbar button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .tabbar button[aria-current=page]{color:var(--accent)}
@@ -309,6 +309,59 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
     <div id="libList" class="block" style="gap:10px"></div>
   </section>
 
+  <!-- TRANSLATE -->
+  <section class="view" id="v-tr" hidden>
+    <h2>유튜브 추출 · 번역</h2>
+    <p class="lead">영상 주소로 정보를 확인하고, 영상의 스크립트를 붙여 넣으면 타임스탬프를 빼고 정리한 뒤 원하는 언어로 번역합니다.</p>
+
+    <div class="panel">
+      <div class="block-head"><h3>1. 영상 주소</h3></div>
+      <div class="row">
+        <input type="text" id="trUrl" placeholder="https://www.youtube.com/watch?v=..." style="flex:1 1 220px;min-width:0" aria-label="유튜브 영상 주소">
+        <button class="btn" id="trFetch">정보 불러오기</button>
+      </div>
+      <div id="trInfo" class="meta">유튜브 영상이나 쇼츠 주소를 붙여 넣으세요.</div>
+    </div>
+
+    <div class="panel">
+      <div class="block-head"><h3>2. 스크립트 붙여 넣기</h3><span class="meta" id="trCount"></span></div>
+      <details>
+        <summary class="meta">스크립트 복사하는 법</summary>
+        <ol class="meta" style="margin:8px 0 0;padding-left:18px">
+          <li>PC 브라우저에서 유튜브 영상을 엽니다.</li>
+          <li>영상 아래 설명란의 <b>더보기</b> → <b>스크립트 표시</b>를 누릅니다.</li>
+          <li>오른쪽에 나온 스크립트를 마우스로 처음부터 끝까지 드래그해 복사합니다.</li>
+          <li>아래 칸에 붙여 넣습니다. 시간 표시(0:00)는 자동으로 빠집니다.</li>
+        </ol>
+      </details>
+      <textarea id="trSrc" rows="7" placeholder="여기에 스크립트나 번역할 글을 붙여 넣으세요" style="font:inherit;font-size:14px;width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px;line-height:1.6"></textarea>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="trStamp" checked> 시간 표시 빼기</label>
+        <label class="check"><input type="checkbox" id="trTags" checked> [음악]·[박수] 같은 표시 빼기</label>
+        <label class="check"><input type="checkbox" id="trJoin"> 한 문단으로 합치기</label>
+      </div>
+      <div class="block">
+        <div class="block-head"><h3>정리된 원문</h3><button class="btn ghost small" id="trCopySrc">복사</button></div>
+        <pre class="out lyr" id="trClean"></pre>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="block-head"><h3>3. 번역</h3></div>
+      <div class="row" style="align-items:end">
+        <label style="flex:1 1 180px">번역할 언어<select id="trLang"></select></label>
+        <button class="btn ai" id="trAI" hidden>AI로 번역</button>
+        <a class="btn ghost" id="trGoogle" href="https://translate.google.com/" target="_blank" rel="noopener" style="text-decoration:none">Google 번역에서 열기</a>
+      </div>
+      <div class="meta" id="trNote"></div>
+      <div class="block" id="trOutWrap" hidden>
+        <div class="block-head"><h3 id="trOutHead">번역</h3><button class="btn ghost small" id="trCopyOut">복사</button></div>
+        <pre class="out lyr" id="trOut"></pre>
+        <div class="row"><button class="btn ghost small" id="trCopyBoth">원문 + 번역 함께 복사</button></div>
+      </div>
+    </div>
+  </section>
+
   <!-- LOG -->
   <section class="view" id="v-log" hidden>
     <h2>30일 일정</h2>
@@ -351,6 +404,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
   <button data-v="v-yt"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg>업로드</button>
   <button data-v="v-lib"><svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="m16 5 3.8-1 3 15.4-3.8.9z"/></svg>보관함</button>
   <button data-v="v-log"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6"/></svg>일정·기록</button>
+  <button data-v="v-tr"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>번역</button>
 </div></nav>
 <div class="toast" id="toast" role="status"></div>
 
@@ -627,7 +681,7 @@ async function initStore(){
 }
 
 // ---------- navigation ----------
-const VIEWS=["v-create","v-yt","v-lib","v-log"];
+const VIEWS=["v-create","v-yt","v-lib","v-log","v-tr"];
 function go(v){
   VIEWS.forEach(x=>$(x).hidden=x!==v);
   $("settingsWrap").hidden=!["v-create","v-yt"].includes(v);
@@ -744,7 +798,7 @@ let sample=null;
 async function initAI(){
   try{if(window.claude&&window.claude.use)sample=await window.claude.use("sample")}catch(e){}
   if(!sample)return;
-  $("aiLyrics").hidden=false;$("aiNext").hidden=false;
+  $("aiLyrics").hidden=false;$("aiNext").hidden=false;$("trAI").hidden=false;trUpdate();
 }
 $("aiLyrics").onclick=async()=>{
   if(!sample)return;const c=cfg();
@@ -977,6 +1031,72 @@ $("batchSave").onclick=async()=>{const b=$("batchSave");b.disabled=true;const ba
 $("batchCopy").onclick=()=>copy(batch.map((s,i)=>`${String(i+1).padStart(2,"0")}. `+songText(s)).join("\n\n────────\n\n"));
 $("batchList").addEventListener("click",e=>{const c=e.target.closest("[data-bcopy]");if(c){copy(songText(batch[+c.dataset.bcopy]));return}
   const sv=e.target.closest("[data-bsave]");if(sv){Store.put(songItem(batch[+sv.dataset.bsave])).then(()=>toast("보관함에 저장했어요"))}});
+
+// ---------- YouTube extract & translate ----------
+const TR_LANGS=[["ko","한국어"],["en","영어"],["ja","일본어"],["zh-CN","중국어(간체)"],["zh-TW","중국어(번체)"],["es","스페인어"],["fr","프랑스어"],["de","독일어"],["it","이탈리아어"],["pt","포르투갈어"],
+ ["ru","러시아어"],["vi","베트남어"],["th","태국어"],["id","인도네시아어"],["ms","말레이어"],["tl","필리핀어(타갈로그)"],["hi","힌디어"],["bn","벵골어"],["ur","우르두어"],["ar","아랍어"],
+ ["fa","페르시아어"],["tr","터키어"],["he","히브리어"],["nl","네덜란드어"],["sv","스웨덴어"],["no","노르웨이어"],["da","덴마크어"],["fi","핀란드어"],["pl","폴란드어"],["cs","체코어"],
+ ["sk","슬로바키아어"],["hu","헝가리어"],["ro","루마니아어"],["bg","불가리아어"],["el","그리스어"],["uk","우크라이나어"],["sr","세르비아어"],["hr","크로아티아어"],["sl","슬로베니아어"],["lt","리투아니아어"],
+ ["lv","라트비아어"],["et","에스토니아어"],["ca","카탈루냐어"],["sw","스와힐리어"],["ta","타밀어"],["te","텔루구어"],["mr","마라티어"],["km","크메르어"],["my","미얀마어"],["mn","몽골어"]];
+$("trLang").innerHTML=TR_LANGS.map(([c,n])=>`<option value="${c}">${n}</option>`).join("");
+try{const l=localStorage.getItem("slowcup-trlang");if(l)$("trLang").value=l}catch(e){}
+function ytId(u){
+  u=String(u||"").trim();
+  const m=u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([A-Za-z0-9_-]{11})/);
+  return m?m[1]:(/^[A-Za-z0-9_-]{11}$/.test(u)?u:null);
+}
+$("trFetch").onclick=async()=>{
+  const id=ytId($("trUrl").value);const box=$("trInfo");
+  if(!id){box.textContent="유튜브 주소를 알아볼 수 없어요. 영상 페이지 주소를 그대로 붙여 넣어 주세요.";return}
+  const watch="https://www.youtube.com/watch?v="+id;
+  box.innerHTML=`영상 ID <b>${h(id)}</b> · <a href="${watch}" target="_blank" rel="noopener">유튜브에서 열기</a> (스크립트는 영상 아래 <b>더보기 → 스크립트 표시</b>)`;
+  try{
+    const r=await fetch("https://www.youtube.com/oembed?format=json&url="+encodeURIComponent(watch));
+    if(!r.ok)throw 0;const d=await r.json();
+    box.innerHTML=`<div class="row" style="align-items:flex-start;flex-wrap:nowrap">
+      <img src="${h(d.thumbnail_url||"")}" alt="" style="width:120px;border-radius:6px;flex:none" onerror="this.remove()">
+      <div style="min-width:0"><b style="color:var(--ink)">${h(d.title||"")}</b><br>${h(d.author_name||"")}<br><a href="${watch}" target="_blank" rel="noopener">유튜브에서 열기</a> · 스크립트는 영상 아래 <b>더보기 → 스크립트 표시</b></div></div>`;
+  }catch(e){box.insertAdjacentHTML("beforeend",`<br><span>제목·썸네일은 설치형 앱(GitHub Pages 주소)에서만 불러올 수 있어요.</span>`)}
+};
+function cleanScript(t){
+  let lines=String(t||"").replace(/\r/g,"").split("\n");
+  if($("trStamp").checked)lines=lines.map(l=>l.replace(/^\s*\(?\d{1,2}:\d{2}(?::\d{2})?\)?\s*/,"")).filter(l=>!/^\s*\d+\s*(초|분|시간|seconds?|minutes?|hours?)(\s*\d+\s*(초|분|seconds?|minutes?))*\s*$/i.test(l));
+  if($("trTags").checked)lines=lines.map(l=>l.replace(/\[[^\]]{1,20}\]|\([^)]{0,3}(음악|박수|웃음|Music|Applause|Laughter)[^)]{0,3}\)/gi,"").trim());
+  lines=lines.map(l=>l.trim()).filter(Boolean);
+  return $("trJoin").checked?lines.join(" ").replace(/\s+/g," "):lines.join("\n");
+}
+let trText="";
+function trUpdate(){
+  trText=cleanScript($("trSrc").value);
+  $("trClean").textContent=trText||"(아직 붙여 넣은 글이 없어요)";
+  $("trCount").textContent=trText?`${trText.length.toLocaleString()}자`:"";
+  const code=$("trLang").value,max=4500;
+  $("trGoogle").href=`https://translate.google.com/?sl=auto&tl=${encodeURIComponent(code)}&text=${encodeURIComponent(trText.slice(0,max))}&op=translate`;
+  $("trNote").textContent=!trText?"":trText.length>max?`Google 번역은 한 번에 ${max.toLocaleString()}자까지라 앞부분만 들어가요.${sample?" 전체는 AI로 번역을 쓰세요.":" 나머지는 나눠서 붙여 넣으세요."}`:"";
+}
+["trSrc","trStamp","trTags","trJoin","trLang"].forEach(id=>$(id).addEventListener("input",trUpdate));
+$("trLang").addEventListener("change",()=>{try{localStorage.setItem("slowcup-trlang",$("trLang").value)}catch(e){}});
+$("trCopySrc").onclick=()=>trText?copy(trText,$("trClean")):toast("복사할 글이 없어요");
+$("trCopyOut").onclick=()=>copy($("trOut").textContent,$("trOut"));
+$("trCopyBoth").onclick=()=>copy(`[원문]\n${trText}\n\n[${$("trLang").selectedOptions[0].text} 번역]\n${$("trOut").textContent}`);
+function trChunks(t,n){const out=[];let cur="";for(const part of t.split(/(?<=[.!?。！？\n])\s*/)){if((cur+" "+part).length>n&&cur){out.push(cur);cur=part}else cur=cur?cur+(t.includes("\n")?"\n":" ")+part:part}if(cur)out.push(cur);return out}
+$("trAI").onclick=async()=>{
+  if(!sample)return;if(!trText){toast("먼저 번역할 글을 붙여 넣어 주세요");return}
+  const lang=$("trLang").selectedOptions[0].text,b=$("trAI");b.disabled=true;
+  $("trOutWrap").hidden=false;$("trOutHead").textContent=lang+" 번역";$("trOut").textContent="번역하는 중이에요";
+  const parts=trChunks(trText,5000);let done="";
+  try{
+    for(let i=0;i<parts.length;i++){
+      $("trNote").textContent=parts.length>1?`${i+1}/${parts.length} 부분 번역 중`:"";
+      const r=await sample(`Translate the following text into ${TR_LANGS.find(x=>x[0]===$("trLang").value)[0]} (${lang}). Keep the line breaks. Translate naturally for a general reader. Output only the translation, with no notes.\n\n<text>\n${parts[i]}\n</text>`,
+        {onText:({text})=>{$("trOut").textContent=(done?done+"\n":"")+text},cache:false});
+      done=(done?done+"\n":"")+r.text.trim();
+    }
+    $("trOut").textContent=done;$("trNote").textContent="";
+  }catch(e){$("trNote").textContent=e&&e.code==="rate_limited"?"잠시 쉬었다가 다시 눌러 주세요.":e&&e.code==="not_granted"?"AI 사용이 허용되지 않았어요. Google 번역에서 열기를 쓰세요.":"번역하지 못했어요. 잠시 뒤 다시 눌러 주세요.";if(!done)$("trOutWrap").hidden=true;else $("trOut").textContent=done}
+  b.disabled=false;
+};
+trUpdate();
 
 // ---------- wiring ----------
 document.addEventListener("click",e=>{
