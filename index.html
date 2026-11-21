@@ -140,6 +140,26 @@ summary{cursor:pointer;font-weight:600}
 .lyrics .sec{display:flex;flex-direction:column}
 .lyrics .lab{font-family:var(--body);font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--brass)}
 .lyrics .none{font-family:var(--body);font-size:13.5px;color:var(--muted)}
+pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .wd{text-align:center;font-size:11.5px;font-weight:600;color:var(--muted);padding:2px 0}
+.cal .wd.sun{color:var(--bad)}
+.cal .cell{font:inherit;min-height:58px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:4px 3px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-width:0}
+.cal .cell .n{font-variant-numeric:tabular-nums;font-size:14px;font-weight:600;line-height:1.2}
+.cal .cell .n small{font-size:10px;font-weight:500;color:var(--muted)}
+.cal .cell .tag{font-size:10.5px;line-height:1.2;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.cal .cell.up{background:var(--surface);border-color:var(--accent)}
+.cal .cell.up .tag{color:var(--accent);font-weight:600}
+.cal .cell.done .n::after{content:" ✓";color:var(--good)}
+.cal .cell.today{box-shadow:inset 0 0 0 2px var(--brass)}
+.cal .cell[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.cal .cell[aria-selected=true] .tag,.cal .cell[aria-selected=true] .n small{color:var(--on-accent)}
+.cal .blank{min-height:58px}
+.cal-legend{display:flex;gap:14px;flex-wrap:wrap}
+.cal-legend .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
+.cal-legend .dot.up{border-color:var(--accent);background:var(--surface)}
+.cal-legend .dot.done{background:var(--good);border-color:var(--good)}
+.cal-legend .dot.today{box-shadow:inset 0 0 0 2px var(--brass)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
 .toast.on{opacity:1}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -199,8 +219,13 @@ summary{cursor:pointer;font-weight:600}
         <div class="meta" id="aiNote"></div>
       </div>
       <div class="block">
-        <div class="block-head"><h3>가사 보기</h3><button class="btn ghost small" id="copyRead">가사만 복사</button></div>
-        <div class="lyrics" id="oneRead"></div>
+        <div class="block-head"><h3>영어 가사</h3><button class="btn ghost small" id="copyEn">복사</button></div>
+        <pre class="out lyr" id="oneEn"></pre>
+      </div>
+      <div class="block">
+        <div class="block-head"><h3>한글 번역</h3><button class="btn ghost small" id="copyKo">복사</button></div>
+        <pre class="out lyr" id="oneKo"></pre>
+        <div class="row"><button class="btn ghost small" id="copyBoth">영어 + 한글 함께 복사</button></div>
       </div>
       <div class="row"><button class="btn ghost" id="copyOne">세 칸 전체 복사</button></div>
       <p class="note">Suno → Create → Custom에서 Style 칸, Exclude 칸, Lyrics 칸에 각각 붙여 넣으세요. 연주곡이면 Instrumental을 켭니다. 수익 채널에 쓸 곡은 유료 플랜 가입 중에 만들어야 합니다.</p>
@@ -287,12 +312,14 @@ summary{cursor:pointer;font-weight:600}
   <!-- LOG -->
   <section class="view" id="v-log" hidden>
     <h2>30일 일정</h2>
-    <p class="lead">화·목·토 저녁 7시 업로드 기준입니다. 업로드 날의 "이 주제로 만들기"를 누르면 설정이 바뀌고 플레이리스트가 만들어집니다.</p>
+    <p class="lead">화·목·토 <b>아침 7시</b> 업로드 기준입니다. 달력에서 날짜를 누르면 그날 할 일이 아래에 나옵니다. 업로드 날의 "이 주제로 만들기"를 누르면 설정이 바뀌고 플레이리스트가 만들어집니다.</p>
     <div class="panel">
       <div class="row" style="align-items:end">
         <label style="flex:1 1 160px">시작일<input type="date" id="planStart"></label>
         <div class="meta" id="planProgress" style="flex:1 1 160px"></div>
       </div>
+      <div class="cal" id="planCal" role="grid" aria-label="30일 일정 달력"></div>
+      <div class="cal-legend meta"><span><i class="dot up"></i>업로드 날 (아침 7시)</span><span><i class="dot done"></i>완료</span><span><i class="dot today"></i>오늘</span></div>
       <div id="planList"></div>
     </div>
 
@@ -438,30 +465,37 @@ function makeStyle(c,bpm,key){
   return `${S.name}, ${inst}, ${bpm} BPM, ${key}, ${M.kw}, ${P.kw}, warm vintage mix, soft dynamics, ${VOCAL[c.vocal]}`;
 }
 const EXCLUDE="heavy drums, distorted guitar, EDM drops, loud brass, aggressive vocals, autotune";
-function verse(c,lang){
+// Lyrics are picked as index pairs so the English and Korean versions are line-by-line translations.
+function verseIdx(c){
   const M=MOODS[c.mood],P=PLACES[c.place];
-  const k=lang==="ko"?"lyKo":"lyEn";const L=pickN(M[k],3);L.splice(rint(0,2),0,pick(P[k]));return L.join("\n");
+  const idx=pickN(M.lyEn.map((_,i)=>i),3);const pi=Math.floor(rng()*P.lyEn.length),pos=rint(0,2);
+  const build=k=>{const L=idx.map(i=>M[k][i]);L.splice(pos,0,P[k][pi]);return L.join("\n")};
+  return{en:build("lyEn"),ko:build("lyKo")};
 }
-function chorus(c,lang){
-  const M=MOODS[c.mood];const hook=pick(lang==="ko"?M.hookKo:M.hookEn);const pool=lang==="ko"?CHO_KO:CHO_EN;
-  const [a,b,d]=pickN(pool,3);return [hook,a,b,d].join("\n");
+function chorusIdx(c){
+  const M=MOODS[c.mood];const hi=Math.floor(rng()*M.hookEn.length);const idx=pickN(CHO_EN.map((_,i)=>i),3);
+  return{en:[M.hookEn[hi],...idx.map(i=>CHO_EN[i])].join("\n"),ko:[M.hookKo[hi],...idx.map(i=>CHO_KO[i])].join("\n")};
 }
-function makeLyrics(c){
+function makeLyricsSet(c){
   const S=STYLES[c.style];
   if(c.vocal==="inst"||c.vocal==="scat"){
     const solo=pick(S.inst.filter(x=>x!==S.lead))||S.inst[0];
     const hum=c.vocal==="scat"?"\n(mm-hmm, da-ba-da)":"";
-    return `[Intro: soft ${S.inst[0]}]\n\n[Theme A: ${S.lead} melody, relaxed]${hum}\n\n[Theme B: warmer, gentle lift]\n\n[Solo: ${solo}, laid-back]\n\n[Theme A Reprise]${hum}\n\n[Outro: slow down, gentle fade out]\n\n[End]`;
+    return{suno:`[Intro: soft ${S.inst[0]}]\n\n[Theme A: ${S.lead} melody, relaxed]${hum}\n\n[Theme B: warmer, gentle lift]\n\n[Solo: ${solo}, laid-back]\n\n[Theme A Reprise]${hum}\n\n[Outro: slow down, gentle fade out]\n\n[End]`,en:"",ko:""};
   }
-  const vl=c.lang==="en"?"en":"ko", cl=c.lang==="ko"?"ko":"en";
-  const ch=chorus(c,cl);
-  return `[Intro: soft ${S.inst[0]}]\n\n[Verse 1]\n${verse(c,vl)}\n\n[Chorus]\n${ch}\n\n[Instrumental Break: ${S.lead}]\n\n[Verse 2]\n${verse(c,vl)}\n\n[Chorus]\n${ch}\n\n[Outro: gentle fade out]\n(${cl==="ko"?"천천히":"slowly"}...)\n\n[End]`;
+  const v1=verseIdx(c),v2=verseIdx(c),ch=chorusIdx(c);
+  const vl=c.lang==="en"?"en":"ko",cl=c.lang==="ko"?"ko":"en";
+  const suno=`[Intro: soft ${S.inst[0]}]\n\n[Verse 1]\n${v1[vl]}\n\n[Chorus]\n${ch[cl]}\n\n[Instrumental Break: ${S.lead}]\n\n[Verse 2]\n${v2[vl]}\n\n[Chorus]\n${ch[cl]}\n\n[Outro: gentle fade out]\n(${cl==="ko"?"천천히":"slowly"}...)\n\n[End]`;
+  const en=`[Verse 1]\n${v1.en}\n\n[Chorus]\n${ch.en}\n\n[Verse 2]\n${v2.en}\n\n[Chorus]\n${ch.en}`;
+  const ko=`[1절]\n${v1.ko}\n\n[후렴]\n${ch.ko}\n\n[2절]\n${v2.ko}\n\n[후렴]\n${ch.ko}`;
+  return{suno,en,ko};
 }
+function makeLyrics(c){return makeLyricsSet(c).suno}
 function makeSong(c,bpm,key,used){
   const S=STYLES[c.style];
   bpm=bpm||rint(S.bpm[0],S.bpm[1]);key=key||pick(KEYS);
   const t=makeTitle(c.mood,c.place,c.style,used);
-  return{...c,bpm,key,title:t.en,titleKo:t.ko,styleText:makeStyle(c,bpm,key),exclude:EXCLUDE,lyrics:makeLyrics(c)};
+  return{...c,bpm,key,title:t.en,titleKo:t.ko,styleText:makeStyle(c,bpm,key),exclude:EXCLUDE,...(L=>({lyrics:L.suno,lyricsEn:L.en,lyricsKo:L.ko}))(makeLyricsSet(c))};
 }
 const songText=s=>`■ ${s.title} (${s.titleKo})\n[Style]\n${s.styleText}\n[Exclude]\n${s.exclude}\n[Lyrics]\n${s.lyrics}`;
 
@@ -604,7 +638,7 @@ function go(v){
 document.querySelectorAll(".tabbar button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.v)));
 
 // ---------- songs → library ----------
-function songItem(s){return{id:"s_"+uid(),kind:"song",title:s.title,titleKo:s.titleKo,styleText:s.styleText,exclude:s.exclude,lyrics:s.lyrics,
+function songItem(s){return{id:"s_"+uid(),kind:"song",title:s.title,titleKo:s.titleKo,styleText:s.styleText,exclude:s.exclude,lyrics:s.lyrics,lyricsEn:s.lyricsEn||"",lyricsKo:s.lyricsKo||"",
   bpm:s.bpm,key:s.key,style:s.style,vocal:s.vocal,mood:s.mood,place:s.place,status:"prompt",paid:false,created:new Date().toISOString()}}
 $("saveOne").onclick=async()=>{await Store.put(songItem(one));toast("보관함에 저장했어요")};
 
@@ -628,7 +662,7 @@ function renderLib(){
       <select data-act="status" aria-label="진행 상태" style="width:auto">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${s.status===k?" selected":""}>${v}</option>`).join("")}</select>
       <label class="check"><input type="checkbox" data-act="paid"${s.paid?" checked":""}> 유료 플랜에서 생성</label>
     </div>
-    <details><summary>가사 보기</summary><div class="lyrics" style="margin-top:8px">${lyricsHTML(s.lyrics)}</div></details>
+    <details><summary>가사 보기 (영어 · 한글)</summary>${lyrBlocks(s,"lib:"+s.id)}</details>
     <details><summary>프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     <div class="row"><button class="btn ghost small" data-act="copy">복사</button><button class="btn danger small" data-act="del">삭제</button></div>
   </div>`).join("");
@@ -649,25 +683,37 @@ const TOPICS=[
 const DAYTASK={1:"Suno로 곡 만들기 (프롬프트 20개 × 2번 생성)",2:"곡 고르기 · Audacity로 다듬기",3:"곡 만들기 · 쇼츠 2개 만들기",4:"영상 편집 · 썸네일",5:"다음 영상 곡 고르기 · 성과 기록",6:"영상 편집 마무리 · 다음 주 주제 정하기",0:"쉬는 날 · 주간 지표 확인"};
 const UPDAYS=[2,4,6];
 function planDoc(){return Store.get("plan")||{id:"plan",kind:"plan",start:"",done:{}}}
-function renderPlan(){
-  const p=planDoc();const start=p.start||todayStr();$("planStart").value=start;
-  let up=0,doneCount=0;const rows=[];const t=todayStr();
+let planSel=null;
+function planDays(){
+  const p=planDoc();const start=p.start||todayStr();let up=0;const days=[];
   for(let i=0;i<30;i++){
-    const d=addDays(start,i),wd=d.getDay(),isUp=UPDAYS.includes(wd);let topic=null;
-    if(isUp&&up<12){topic=TOPICS[up];up++}
-    const done=!!(p.done||{})[i];if(done)doneCount++;
-    const tp=topic?`${MOODS[topic.mood].ko} · ${PLACES[topic.place].ko} · ${STYLES[topic.style].ko}${topic.long?" (2시간)":""}`:"";
-    rows.push(`<div class="day${topic?" up":""}${done?" done":""}${ymd(d)===t?" today":""}">
-      <div class="d"><b>${d.getMonth()+1}/${d.getDate()}</b>${"일월화수목금토"[wd]}요일</div>
-      <div style="min-width:0"><div class="t">${topic?`<b>업로드 ${up}편 (19시)</b> — ${tp}<br>`:""}${DAYTASK[wd]}</div>
-      ${topic?`<button class="btn ghost small" style="margin-top:6px" data-topic="${up-1}">이 주제로 만들기</button>`:""}</div>
-      <input type="checkbox" data-day="${i}" aria-label="${d.getMonth()+1}월 ${d.getDate()}일 완료"${done?" checked":""}>
-    </div>`);
+    const d=addDays(start,i),wd=d.getDay();let topic=null,upNo=0;
+    if(UPDAYS.includes(wd)&&up<12){topic=TOPICS[up];up++;upNo=up}
+    days.push({i,d,wd,topic,upNo,done:!!(p.done||{})[i],today:ymd(d)===todayStr()});
   }
-  $("planList").innerHTML=rows.join("");
-  $("planProgress").textContent=`30일 중 ${doneCount}일 완료 · 업로드 ${up}편 계획`;
+  return{p,start,days,up};
 }
-$("planStart").addEventListener("change",async()=>{const p=planDoc();await Store.put({...p,start:$("planStart").value,done:{}})});
+function renderPlan(){
+  const {start,days,up}=planDays();$("planStart").value=start;
+  if(planSel==null||planSel>=days.length){const ti=days.findIndex(x=>x.today);planSel=ti>=0?ti:0}
+  const lead=days[0].wd;let html="일월화수목금토".split("").map((w,k)=>`<div class="wd${k===0?" sun":""}">${w}</div>`).join("");
+  html+='<div class="blank"></div>'.repeat(lead);
+  html+=days.map(x=>{const first=x.i===0||x.d.getDate()===1;
+    return `<button type="button" class="cell${x.topic?" up":""}${x.done?" done":""}${x.today?" today":""}" data-sel="${x.i}" aria-selected="${x.i===planSel}" aria-label="${x.d.getMonth()+1}월 ${x.d.getDate()}일${x.topic?" 업로드":""}${x.done?" 완료":""}">
+      <span class="n">${first?`<small>${x.d.getMonth()+1}/</small>`:""}${x.d.getDate()}</span>
+      <span class="tag">${x.topic?"▶ 7시":x.wd===0?"휴식":""}</span></button>`}).join("");
+  $("planCal").innerHTML=html;
+  const x=days[planSel];const tp=x.topic?`${MOODS[x.topic.mood].ko} · ${PLACES[x.topic.place].ko} · ${STYLES[x.topic.style].ko}${x.topic.long?" (2시간)":""}`:"";
+  $("planList").innerHTML=`<div class="day${x.topic?" up":""}${x.done?" done":""}" style="border-bottom:none">
+      <div class="d"><b>${x.d.getMonth()+1}/${x.d.getDate()}</b>${"일월화수목금토"[x.wd]}요일</div>
+      <div style="min-width:0"><div class="t">${x.topic?`<b>업로드 ${x.upNo}편 · 아침 7시 예약</b> — ${tp}<br>`:""}${DAYTASK[x.wd]}</div>
+      ${x.topic?`<button class="btn ghost small" style="margin-top:6px" data-topic="${x.upNo-1}">이 주제로 만들기</button>`:""}</div>
+      <label class="check" style="flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted)"><input type="checkbox" data-day="${x.i}"${x.done?" checked":""}>완료</label>
+    </div>`;
+  $("planProgress").textContent=`30일 중 ${days.filter(d=>d.done).length}일 완료 · 업로드 ${up}편 계획`;
+}
+$("planCal").addEventListener("click",e=>{const c=e.target.closest("[data-sel]");if(!c)return;planSel=+c.dataset.sel;renderPlan()});
+$("planStart").addEventListener("change",async()=>{planSel=null;const p=planDoc();await Store.put({...p,start:$("planStart").value,done:{}})});
 $("planList").addEventListener("change",async e=>{const c=e.target.closest("[data-day]");if(!c)return;const p=planDoc();
   await Store.put({...p,start:p.start||$("planStart").value,done:{...(p.done||{}),[c.dataset.day]:c.checked}})});
 $("planList").addEventListener("click",e=>{const b=e.target.closest("[data-topic]");if(!b)return;const tp=TOPICS[+b.dataset.topic];
@@ -712,10 +758,12 @@ Rules:
 - Use Suno section tags on their own lines: [Intro: ...], [Verse 1], [Chorus], [Instrumental Break: ${STYLES[c.style].lead}], [Verse 2], [Chorus], [Bridge], [Outro: gentle fade out], [End].
 - 4 short lines per verse, 4 lines per chorus, 2 lines bridge. Simple, warm, concrete everyday images (cups, windows, weather, streets). Easy to sing, gentle repetition in the chorus.
 - Do not quote or imitate any existing song, and never mention real artists, brands or song titles.
-- Output only the lyrics with tags. No title line, no explanation.`;
+- Return JSON only: {"suno": the lyrics with all the tags above, in ${langTxt}; "en": the same lyrics in natural English with only [Verse 1], [Chorus], [Verse 2], [Bridge] labels; "ko": a natural Korean translation of "en", line by line, with labels [1절], [후렴], [2절], [브릿지]}.`;
   try{
-    const r=await sample(prompt,{onText:({text})=>{$("oneLyr").textContent=text},cache:false});
-    one.lyrics=r.text.trim();$("oneLyr").textContent=one.lyrics;updateRead();$("aiNote").textContent="Claude가 쓴 가사예요. 마음에 들게 고친 뒤 쓰세요."+(r.truncated?" (길이 제한으로 끝이 잘렸어요)":"");
+    const r=await sample.json(prompt,{cache:false});
+    if(!r||typeof r.suno!=="string")throw{code:"invalid_json"};
+    one.lyrics=r.suno.trim();one.lyricsEn=String(r.en||"").trim();one.lyricsKo=String(r.ko||"").trim();
+    $("oneLyr").textContent=one.lyrics;updateRead();$("aiNote").textContent="Claude가 쓴 가사예요. 마음에 들게 고친 뒤 쓰세요.";
   }catch(e){
     $("oneLyr").textContent=one.lyrics;
     $("aiNote").textContent=e&&e.code==="not_granted"?"AI 사용이 허용되지 않았어요. 기본 가사를 그대로 쓰세요.":e&&e.code==="rate_limited"?"잠시 쉬었다가 다시 눌러 주세요.":"가사를 받지 못했어요. 잠시 뒤 다시 눌러 주세요.";
@@ -873,8 +921,28 @@ function lyricsHTML(lyrics){
   return secs.map(x=>`<div class="sec">${x.lab?`<span class="lab">${x.lab}</span>`:""}${x.lines.map(h).join("<br>")}</div>`).join("");
 }
 const lyricsText=l=>lyricSections(l).map(x=>(x.lab?"["+x.lab+"]\n":"")+x.lines.join("\n")).join("\n\n");
-function updateRead(){$("oneRead").innerHTML=lyricsHTML(one.lyrics)}
-$("copyRead").onclick=()=>{const t=lyricsText(one.lyrics);if(!t){toast("연주곡이라 복사할 가사가 없어요");return}copy(t,$("oneRead"))};
+const NO_LYRICS="연주곡이라 가사가 없어요. 가사가 있는 곡을 만들려면 위 설정의 보컬에서 여성 보컬이나 남성 보컬을 고르세요.";
+// English / Korean text for a song; older saved songs without the pair fall back to the cleaned Suno lyrics.
+function lyrPair(s){
+  if(s.lyricsEn||s.lyricsKo)return{en:s.lyricsEn||"",ko:s.lyricsKo||""};
+  const t=lyricsText(s.lyrics);if(!t)return{en:"",ko:""};
+  return /[가-힣]/.test(t)?{en:"",ko:t}:{en:t,ko:""};
+}
+const bothText=s=>{const p=lyrPair(s);return[p.en&&"[English]\n"+p.en,p.ko&&"[한글 번역]\n"+p.ko].filter(Boolean).join("\n\n")};
+function lyrBlocks(s,src){
+  const p=lyrPair(s);
+  if(!p.en&&!p.ko)return `<p class="meta" style="margin:8px 0 0">${NO_LYRICS}</p>`;
+  const one=(lab,txt,k)=>`<div class="block" style="margin-top:8px"><div class="block-head"><h3>${lab}</h3>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div><pre class="out lyr">${txt?h(txt):"(번역이 없어요)"}</pre></div>`;
+  return one("영어 가사",p.en,"en")+one("한글 번역",p.ko,"ko")+`<div class="row" style="margin-top:8px"><button class="btn ghost small" data-lcopy="both" data-src="${h(src)}">영어 + 한글 함께 복사</button></div>`;
+}
+function updateRead(){const p=lyrPair(one);$("oneEn").textContent=p.en||(p.ko?"(영어 가사가 없어요)":NO_LYRICS);$("oneKo").textContent=p.ko||(p.en?"(번역이 없어요)":NO_LYRICS)}
+function copyLyr(t,el){if(!t){toast("복사할 가사가 없어요");return}copy(t,el)}
+$("copyEn").onclick=()=>copyLyr(lyrPair(one).en,$("oneEn"));
+$("copyKo").onclick=()=>copyLyr(lyrPair(one).ko,$("oneKo"));
+$("copyBoth").onclick=()=>copyLyr(bothText(one));
+document.addEventListener("click",e=>{const b=e.target.closest("[data-lcopy]");if(!b)return;const [kind,ref]=b.dataset.src.split(":");
+  const s=kind==="batch"?batch[+ref]:Store.get(ref);if(!s)return;const k=b.dataset.lcopy;
+  copyLyr(k==="both"?bothText(s):lyrPair(s)[k],b.closest(".block")?.querySelector("pre"))});
 
 // ---------- batch create ----------
 let batch=[];
@@ -896,7 +964,7 @@ function makeBatch(){
   const mins=n*(parseFloat($("avg").value)||3.2);
   $("batchMeta").textContent=`${n}곡 · 약 ${Math.round(mins)}분`;
   $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)}${s.vocal!=="inst"?" · "+VOCAL_KO[s.vocal]:""}</span></summary>
-    <div class="lyrics" style="margin-top:8px">${lyricsHTML(s.lyrics)}</div>
+    ${lyrBlocks(s,"batch:"+i)}
     <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     <div class="row" style="margin-top:8px"><button class="btn ghost small" data-bcopy="${i}">복사</button><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
   $("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;syncTracks();
