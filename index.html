@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211958";
+  var APP_VERSION = "202611212001";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -989,16 +989,12 @@ function tracklistHTML(songs,withCards){const rows=tracklistRows(songs);return `
   return `<li class="${open?"open":""}"><button type="button" class="trk${open?" sel":""}" data-fsong="${h(x.id)}" aria-expanded="${open}"><span class="tt">${r.time}</span><span class="tn"><b>${h(r.title)}</b><span class="meta">${h(r.sub)}</span></span><span class="chev" aria-hidden="true">${open?"▾":"▸"}</span></button>${withCards?`<div class="song-inline"${open?"":" hidden"}>${libCard(x)}</div>`:""}</li>`}).join("")}</ol>`}
 const tracklistText=songs=>tracklistRows(songs).map(r=>`${r.time}  ${r.title}\n      ${r.sub}`).join("\n");
 function libCard(s){return `<div class="card" data-id="${h(s.id)}">
-    <div class="row" style="justify-content:space-between;align-items:flex-start">
-      <div style="min-width:0"><h4 class="ttl">${h(s.title)}</h4><div class="meta">${h(s.titleKo)} · ${h(STYLES[s.style]?.ko||s.style)} · ${h(s.bpm)} BPM · ${h(s.key)} · ${h(VOCAL_KO[s.vocal]||"")}</div></div>
-      ${s.status==="picked"?'<span class="pill ok">영상용</span>':s.status==="made"?'<span class="pill">생성함</span>':'<span class="pill v">프롬프트</span>'}
-    </div>
     <div class="row">
+      ${s.status==="picked"?'<span class="pill ok">영상용</span>':s.status==="made"?'<span class="pill">생성함</span>':'<span class="pill v">프롬프트</span>'}
       <select data-act="status" aria-label="진행 상태" style="width:auto">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${s.status===k?" selected":""}>${v}</option>`).join("")}</select>
       <label class="check"><input type="checkbox" data-act="paid"${s.paid?" checked":""}> 유료 플랜에서 생성</label>
     </div>
-    <details class="lyr-details"><summary>영어 가사 · 한글 가사 보기</summary>${lyrBlocks(s,"lib:"+s.id)}</details>
-    <details><summary>프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
+    ${lyrBlocks(s,"lib:"+s.id)}
     ${sunoBarHTML("lib:"+s.id,s)}<div class="row"><button class="btn ghost small" data-act="doc">파일로 저장</button><button class="btn danger small" data-act="del">삭제</button></div>
   </div>`}
 
@@ -1451,7 +1447,7 @@ function sunoTarget(btn,k){
   const src=btn.dataset.src;
   if(src==="one")return $({lyrics:"oneLyr",style:"oneStyle",title:"oneTitle",exclude:"oneEx"}[k]);
   const box=btn.closest(src.startsWith("batch:")?"details":".card");if(!box)return null;const s=songBySrc(src);
-  if(k==="title")return box.querySelector(".ttl");
+  if(k==="title")return box.querySelector(".ttl")||box.closest("li")?.querySelector(".trk .tn b");
   if(k==="style")return box.querySelector(".genre-text");
   if(k==="exclude")return box.querySelector(".excl-text span");
   const boxes=box.querySelectorAll(".lyr-lines");return boxes[s&&s.lang&&s.lang!=="en"&&boxes[1]?1:0]||box.querySelector(".lyr-lines");
