@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211751";
+  var APP_VERSION = "202611211759";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -237,6 +237,14 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .yt-tracks .tt{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600;font-size:13px}
 .yt-tracks .tn{display:flex;flex-direction:column;min-width:0}
 .yt-tracks .tn b{font-family:var(--display);font-size:15.5px;font-weight:700}
+.folder{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px}
+.folder>summary{display:flex;justify-content:space-between;gap:8px;align-items:center;cursor:pointer;list-style:none}
+.folder>summary::-webkit-details-marker{display:none}
+.folder>summary::before{content:"▸";color:var(--muted);margin-right:4px}
+.folder[open]>summary::before{content:"▾"}
+.folder .fname{font-family:var(--display);font-weight:700;font-size:16px;flex:1;min-width:0}
+.folder-acts{margin:10px 0}
+.folder .card{background:var(--bg)}
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
 .undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
@@ -950,7 +958,19 @@ function renderLib(){
   const shown=songs.filter(s=>libFilter==="all"||s.status===libFilter);
   if(Store.mode==="loading"){$("libList").innerHTML=`<div class="empty">보관함을 불러오는 중이에요</div>`;return}
   if(!shown.length){$("libList").innerHTML=`<div class="empty">${songs.length?"이 조건에 맞는 곡이 없어요":"아직 저장한 곡이 없어요.<br>만들기 탭에서 <b>보관함에 저장</b>을 누르거나, 플레이리스트 탭에서 20곡을 한 번에 저장해 보세요."}</div>`;return}
-  $("libList").innerHTML=shown.map(s=>`<div class="card" data-id="${h(s.id)}">
+  // Group songs saved together into folders; songs saved one by one go to "낱곡".
+  const groups=new Map();
+  shown.forEach(x=>{const k=x.groupId||"_single";if(!groups.has(k))groups.set(k,{id:k,name:x.groupName||"낱곡 (하나씩 저장한 곡)",songs:[],latest:""});const g=groups.get(k);g.songs.push(x);if((x.created||"")>g.latest)g.latest=x.created||""});
+  const order=[...groups.values()].sort((a,b)=>a.id==="_single"?1:b.id==="_single"?-1:b.latest.localeCompare(a.latest));
+  $("libList").innerHTML=order.map(g=>{
+    g.songs.sort((a,b)=>(a.groupIdx??0)-(b.groupIdx??0)||(a.created||"").localeCompare(b.created||""));
+    const pickedN=g.songs.filter(x=>x.status==="picked").length;
+    return `<details class="folder" ${libOpen.has(g.id)?"open":""} data-g="${h(g.id)}"><summary><span class="fname">📁 ${h(g.name)}</span><span class="meta">${g.songs.length}곡${pickedN?` · 영상용 ${pickedN}`:""}</span></summary>
+      <div class="row folder-acts"><button class="btn small" data-gact="file" data-g="${h(g.id)}">파일로 저장</button><button class="btn ghost small" data-gact="pick" data-g="${h(g.id)}">모두 영상용으로 선택</button></div>
+      <div class="block" style="gap:10px">${g.songs.map(libCard).join("")}</div></details>`}).join("");
+}
+const libOpen=new Set();
+function libCard(s){return `<div class="card" data-id="${h(s.id)}">
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <div style="min-width:0"><h4>${h(s.title)}</h4><div class="meta">${h(s.titleKo)} · ${h(STYLES[s.style]?.ko||s.style)} · ${h(s.bpm)} BPM · ${h(s.key)} · ${h(VOCAL_KO[s.vocal]||"")}</div></div>
       ${s.status==="picked"?'<span class="pill ok">영상용</span>':s.status==="made"?'<span class="pill">생성함</span>':'<span class="pill v">프롬프트</span>'}
@@ -962,13 +982,26 @@ function renderLib(){
     <details><summary>영어 가사 · 한글 가사 보기</summary>${lyrBlocks(s,"lib:"+s.id)}</details>
     <details><summary>프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     ${sunoBarHTML("lib:"+s.id,s)}<div class="row"><button class="btn danger small" data-act="del">삭제</button></div>
-  </div>`).join("");
-}
+  </div>`}
+
 $("libList").addEventListener("change",async e=>{if(!e.target.dataset.act)return;const c=e.target.closest(".card");if(!c)return;const s=Store.get(c.dataset.id);if(!s)return;
   const act=e.target.dataset.act;const next={...s};if(act==="status")next.status=e.target.value;if(act==="status"&&e.target.value==="picked")trackSrc="picked";if(act==="paid")next.paid=e.target.checked;await Store.put(next)});
 $("libList").addEventListener("click",async e=>{const b=e.target.closest("button[data-act]");if(!b)return;const c=b.closest(".card");const s=Store.get(c.dataset.id);if(!s)return;
   if(b.dataset.act==="copy")copy(songText(s));
   if(b.dataset.act==="del"){if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="한 번 더 누르면 삭제";setTimeout(()=>{b.classList.remove("armed");b.textContent="삭제"},3000);return}await Store.del(s.id);toast("삭제했어요")}});
+$("libList").addEventListener("toggle",e=>{const d=e.target;if(!d.classList||!d.classList.contains("folder"))return;if(d.open)libOpen.add(d.dataset.g);else libOpen.delete(d.dataset.g)},true);
+function libGroupSongs(gid){return Store.all("song").filter(x=>(x.groupId||"_single")===gid).sort((a,b)=>(a.groupIdx??0)-(b.groupIdx??0)||(a.created||"").localeCompare(b.created||""))}
+async function saveTextFile(name,text){
+  if(window.claude&&window.claude.use){try{const d=await window.claude.use("downloads");if(d){await d.save({filename:name,data:new Blob([text],{type:"text/plain;charset=utf-8"})});return "saved"}}catch(e){if(e&&e.code==="declined")return "declined"}}
+  try{const u=URL.createObjectURL(new Blob(["\ufeff"+text],{type:"text/plain;charset=utf-8"}));const a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),3000);return "saved"}catch(e){}
+  copy(text);return "copied";
+}
+$("libList").addEventListener("click",async e=>{const b=e.target.closest("[data-gact]");if(!b)return;const songs=libGroupSongs(b.dataset.g);if(!songs.length)return;
+  if(b.dataset.gact==="pick"){trackSrc="picked";for(const x of songs)if(x.status!=="picked")await Store.put({...x,status:"picked"});toast(`${songs.length}곡을 영상용으로 골랐어요. 업로드 탭에 들어갔어요`);return}
+  if(b.dataset.gact==="file"){const c=new Date(songs[0].created||Date.now()),pad=n=>String(n).padStart(2,"0");const name=`slowcup-${c.getFullYear()}${pad(c.getMonth()+1)}${pad(c.getDate())}-${pad(c.getHours())}${pad(c.getMinutes())}-${songs.length}songs`;
+    const head=`${songs[0].groupName||"Slow Cup Jazz 곡 모음"}\n${songs.length}곡 · ${$("channel").value||"Slow Cup Jazz"}\n\n════════════════\n\n`;
+    const r=await saveTextFile(`${name}.txt`,head+songs.map(fullSongText).join("\n\n────────────\n\n"));
+    toast(r==="saved"?"파일로 저장했어요":r==="declined"?"저장을 취소했어요":"파일 저장이 안 되는 곳이라 내용을 복사했어요")}});
 $("backup").onclick=()=>copy(JSON.stringify([...Store.items.values()],null,1));
 
 // ---------- 30-day plan ----------
@@ -1381,8 +1414,12 @@ function makeBatch(){
 $("batchMake").onclick=makeBatch;
 $("batchSheet").onclick=()=>copy(["번호\t제목\t한글 제목\t스타일\tBPM\t키\t보컬\tStyle 프롬프트",...batch.map((s,i)=>[i+1,s.title,s.titleKo,STYLES[s.style].ko,s.bpm,s.key,VOCAL_KO[s.vocal],s.styleText].join("\t"))].join("\n"));
 $("batchSave").onclick=async()=>{const b=$("batchSave");b.disabled=true;const base=Date.now();
-  for(let i=0;i<batch.length;i++){const it=songItem(batch[i]);it.created=new Date(base+i).toISOString();await Store.put(it)}
-  b.disabled=false;toast(batch.length+"곡을 보관함에 저장했어요")};
+  const f=batch[0]||{},d=new Date(),M=MOODS[f.mood]||{ko:""},P=PLACES[f.place]||{ko:""},S=STYLES[f.style]||{ko:""};
+  const hh=String(d.getHours()).padStart(2,"0"),mm=String(d.getMinutes()).padStart(2,"0");
+  const gid="g_"+uid(),gname=`${d.getMonth()+1}/${d.getDate()} ${hh}:${mm} ${M.ko} · ${P.ko} · ${S.ko} (${batch.length}곡)`;
+  libOpen.add(gid);
+  for(let i=0;i<batch.length;i++){const it=songItem(batch[i]);it.created=new Date(base+i).toISOString();it.groupId=gid;it.groupName=gname;it.groupIdx=i;await Store.put(it)}
+  b.disabled=false;toast(`${batch.length}곡을 보관함의 한 폴더에 저장했어요`)};
 // Copy-all: every song with genre, exclude, English lyrics and Korean lyrics together.
 function fullSongText(s,i){
   const st=STYLES[s.style],p=lyrPair(s),inst=s.vocal==="inst"||s.vocal==="scat";
