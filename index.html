@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211741";
+  var APP_VERSION = "202611211745";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -340,10 +340,11 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
   <section class="view" id="v-yt" hidden>
     <div class="panel">
       <div class="block-head"><h3>이번 영상의 곡</h3><span class="meta" id="ytSource"></span></div>
+      <div class="chips" id="ytSrcChips"></div>
       <div id="ytTracks"></div>
       <div class="row" style="align-items:end">
         <label style="flex:0 1 160px">평균 곡 길이(분)<input type="number" id="avg" min="1.5" max="6" step="0.1" value="3.2"></label>
-        <p class="meta" style="flex:1 1 220px;margin:0">보관함에서 <b>영상용으로 선택</b>한 곡이 있으면 그 곡, 없으면 만들기 탭에서 한번에 만든 곡이에요. 시간은 평균 길이로 계산한 대략값이니 실제 곡 길이에 맞게 고쳐 주세요.</p>
+        <p class="meta" style="flex:1 1 220px;margin:0">만들기 탭에서 <b>한번에 만들기</b>를 누르면 그 곡들이 여기에 들어와요. 보관함에서 <b>영상용으로 선택</b>한 곡도 있으면 위에서 고를 수 있어요. 시간은 평균 길이로 계산한 대략값이니 실제 곡 길이에 맞게 고쳐 주세요.</p>
       </div>
     </div>
     <div class="panel" id="thumbPanel">
@@ -956,7 +957,7 @@ function renderLib(){
   </div>`).join("");
 }
 $("libList").addEventListener("change",async e=>{if(!e.target.dataset.act)return;const c=e.target.closest(".card");if(!c)return;const s=Store.get(c.dataset.id);if(!s)return;
-  const act=e.target.dataset.act;const next={...s};if(act==="status")next.status=e.target.value;if(act==="paid")next.paid=e.target.checked;await Store.put(next)});
+  const act=e.target.dataset.act;const next={...s};if(act==="status")next.status=e.target.value;if(act==="status"&&e.target.value==="picked")trackSrc="picked";if(act==="paid")next.paid=e.target.checked;await Store.put(next)});
 $("libList").addEventListener("click",async e=>{const b=e.target.closest("button[data-act]");if(!b)return;const c=b.closest(".card");const s=Store.get(c.dataset.id);if(!s)return;
   if(b.dataset.act==="copy")copy(songText(s));
   if(b.dataset.act==="del"){if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="한 번 더 누르면 삭제";setTimeout(()=>{b.classList.remove("armed");b.textContent="삭제"},3000);return}await Store.del(s.id);toast("삭제했어요")}});
@@ -1286,7 +1287,7 @@ async function applyLyrics(src,s,next){
   if(src.startsWith("lib:")){await Store.put({...s,...next});return}
   Object.assign(s,next);
   if(src==="one"){$("oneLyr").textContent=one.lyrics;updateRead()}
-  else{const d=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);const open=d&&d.open;renderBatchList();const d2=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);if(d2&&open)d2.open=true;syncTracks()}
+  else{saveBatch();const d=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);const open=d&&d.open;renderBatchList();const d2=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);if(d2&&open)d2.open=true;syncTracks()}
 }
 let undoTimer=null;
 function showUndo(){$("undoBar").hidden=false;clearTimeout(undoTimer);undoTimer=setTimeout(()=>{$("undoBar").hidden=true},6000)}
@@ -1335,6 +1336,11 @@ function resetSunoOne(){document.querySelectorAll("#sunoOne [data-suno]").forEac
 function batchVocalLabel(){$("batchVocalLab").textContent=$("vocal").value==="inst"?"보컬곡 1~2곡 섞기":"연주곡 1~2곡 섞기"}
 $("vocal").addEventListener("change",batchVocalLabel);batchVocalLabel();
 let batch=[];
+// Keep the last playlist on this device so it survives closing the app.
+const BKEY="slowcup-batch";
+function saveBatch(){try{localStorage.setItem(BKEY,JSON.stringify(batch))}catch(e){}}
+function loadBatch(){try{const a=JSON.parse(localStorage.getItem(BKEY)||"[]");if(Array.isArray(a))batch=a.filter(x=>x&&x.title&&x.style)}catch(e){batch=[]}}
+let trackSrc="batch"; // which songs the upload tab uses: "batch" (last made) or "picked" (library)
 function renderBatchList(){
   $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
     ${lyrBlocks(s,"batch:"+i)}
@@ -1359,7 +1365,8 @@ function makeBatch(){
   const mins=n*(parseFloat($("avg").value)||3.2);
   $("batchMeta").textContent=`${n}곡 · 약 ${Math.round(mins)}분`;
   renderBatchList();
-  $("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;syncTracks();
+  $("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;trackSrc="batch";saveBatch();syncTracks();
+  toast(`${batch.length}곡을 만들었어요. 업로드 탭 ‘이번 영상의 곡’에 들어갔어요`);
 }
 $("batchMake").onclick=makeBatch;
 $("batchSheet").onclick=()=>copy(["번호\t제목\t한글 제목\t스타일\tBPM\t키\t보컬\tStyle 프롬프트",...batch.map((s,i)=>[i+1,s.title,s.titleKo,STYLES[s.style].ko,s.bpm,s.key,VOCAL_KO[s.vocal],s.styleText].join("\t"))].join("\n"));
@@ -1459,10 +1466,20 @@ function renderYtTracks(){
   $("ytTracks").innerHTML=list.length?`<ol class="yt-tracks">${list.map(s=>{const st=STYLES[s.style];const r=`<li><span class="tt">${fmt(t)}</span><div class="tn"><b>${h(s.title)}</b><span class="meta">${h(s.titleKo||"")} · ${h(st?st.ko:s.style)} · ${h(s.bpm)} BPM · ${h(VOCAL_KO[s.vocal]||"")}</span></div></li>`;t+=avg;return r}).join("")}</ol>`
     :'<div class="empty">아직 곡이 없어요. <b>만들기</b> 탭의 <b>플레이리스트 만들기</b>에서 <b>한번에 만들기</b>를 누르면 여기에 곡 목록이 나와요.</div>';
 }
-function syncTracks(){const picked=Store.all("song").filter(s=>s.status==="picked").sort((a,b)=>(a.created||"").localeCompare(b.created||""));
-  list=picked.length?picked:batch;const mins=Math.round(list.length*(parseFloat($("avg").value)||3.2));
-  $("ytSource").textContent=picked.length?`보관함의 영상용 곡 ${list.length}곡 · 약 ${mins}분`:batch.length?`만들기 탭에서 한번에 만든 곡 ${list.length}곡 · 약 ${mins}분`:"아직 곡이 없어요. 만들기 탭에서 여러 곡을 한번에 만들어 보세요.";renderYtTracks();renderYT()}
+function syncTracks(){
+  const picked=Store.all("song").filter(s=>s.status==="picked").sort((a,b)=>(a.created||"").localeCompare(b.created||""));
+  if(trackSrc==="picked"&&!picked.length)trackSrc="batch";
+  if(trackSrc==="batch"&&!batch.length&&picked.length)trackSrc="picked";
+  list=trackSrc==="picked"?picked:batch;
+  const mins=Math.round(list.length*(parseFloat($("avg").value)||3.2));
+  const chip=(k,lab,n)=>`<button type="button" class="chip" data-tsrc="${k}" aria-pressed="${trackSrc===k}">${lab} ${n}곡</button>`;
+  $("ytSource").textContent=list.length?`${list.length}곡 · 약 ${mins}분`:"";
+  $("ytSrcChips").innerHTML=(batch.length&&picked.length)?chip("batch","방금 만든 곡",batch.length)+chip("picked","보관함 영상용",picked.length):"";
+  renderYT();renderYtTracks();
+}
+document.addEventListener("click",e=>{const c=e.target.closest("[data-tsrc]");if(!c)return;trackSrc=c.dataset.tsrc;syncTracks()});
 Store.on(()=>{renderLib();renderPlan();renderLog();syncTracks()});
+loadBatch();if(batch.length){renderBatchList();$("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;$("batchMeta").textContent=`${batch.length}곡 · 약 ${Math.round(batch.length*(parseFloat($("avg").value)||3.2))}분`}
 renderOne();renderLib();renderPlan();renderLog();syncTracks();
 try{const v=localStorage.getItem("slowcup-view");if(VIEWS.includes(v))go(v)}catch(e){}
 initStore();initAI();
