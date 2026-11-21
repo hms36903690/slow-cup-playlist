@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211507";
+  var APP_VERSION = "202611211510";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -211,7 +211,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
           <option value="inst">연주곡</option><option value="female">여성 보컬</option>
           <option value="male">남성 보컬</option><option value="scat">허밍·스캣</option></select></label>
         <label>가사 언어<select id="lang">
-          <option value="ko">한국어</option><option value="en">영어</option><option value="mix">한국어 + 영어 후렴</option></select></label>
+          <option value="en" selected>영어</option><option value="ko">한국어</option><option value="mix">한국어 + 영어 후렴</option></select></label>
         <label>채널 이름<input type="text" id="channel" value="Slow Cup Jazz"></label>
       </div>
     </div>
@@ -534,6 +534,7 @@ fill("mood",MOODS,v=>v.ko);fill("place",PLACES,v=>v.ko);fill("style",STYLES,v=>v
 // restore settings
 const SKEY="slowcup-settings";
 try{const s=JSON.parse(localStorage.getItem(SKEY)||"{}");for(const k in s){if($(k)){if($(k).type==="checkbox")$(k).checked=s[k];else $(k).value=s[k]}}}catch(e){}
+try{if(!localStorage.getItem("slowcup-lang-en")){$("lang").value="en";localStorage.setItem("slowcup-lang-en","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.lang="en";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("lang").value="en"}
 function save(){try{const o={};["mood","place","style","vocal","lang","channel","count","avg","mixStyle","mixVocal"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
 const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").value,vocal:$("vocal").value,lang:$("lang").value});
 
