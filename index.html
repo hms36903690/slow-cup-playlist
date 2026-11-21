@@ -198,9 +198,9 @@ summary{cursor:pointer;font-weight:600}
       <p class="note">Suno → Create → Custom에서 Style 칸, Exclude 칸, Lyrics 칸에 각각 붙여 넣으세요. 연주곡이면 Instrumental을 켭니다. 수익 채널에 쓸 곡은 유료 플랜 가입 중에 만들어야 합니다.</p>
     </div>
     <div class="panel" id="batchPanel">
-      <div class="block-head"><h3>여러 곡 한번에 만들기</h3><span class="meta" id="batchMeta"></span></div>
+      <div class="block-head"><h3>플레이리스트 만들기 (여러 곡 한번에)</h3><span class="meta" id="batchMeta"></span></div>
       <div class="grid">
-        <label>곡 수<input type="number" id="batchN" min="2" max="20" value="13"></label>
+        <label>곡 수<input type="number" id="batchN" min="2" max="40" value="13"></label>
         <label class="check" style="align-self:end"><input type="checkbox" id="batchMix" checked> 비슷한 스타일 섞기</label>
         <label class="check" style="align-self:end"><input type="checkbox" id="batchVocal"> 보컬곡 1~2곡 섞기</label>
       </div>
@@ -208,6 +208,7 @@ summary{cursor:pointer;font-weight:600}
         <button class="btn" id="batchMake">한번에 만들기</button>
         <button class="btn ghost" id="batchSave" disabled>모두 보관함에 저장</button>
         <button class="btn ghost" id="batchCopy" disabled>전체 복사</button>
+        <button class="btn ghost" id="batchSheet" disabled>시트용 표 복사</button>
       </div>
       <p class="note">위에서 고른 분위기·장소·스타일로 여러 곡을 만듭니다. 제목이 겹치지 않고, 차분하게 시작해 중간에 살짝 경쾌해졌다가 끝에서 첫 곡의 키로 돌아오도록 순서를 짭니다.</p>
       <div id="batchList"></div>
@@ -221,7 +222,7 @@ summary{cursor:pointer;font-weight:600}
         <label style="flex:0 1 160px">평균 곡 길이(분)<input type="number" id="avg" min="1.5" max="6" step="0.1" value="3.2"></label>
         <div class="meta" id="ytSource" style="flex:1 1 200px"></div>
       </div>
-      <p class="note">보관함에서 <b>영상용으로 선택</b>한 곡을 저장한 순서대로 타임스탬프에 넣습니다. 20곡 구성은 <a href="playlist.html" target="_blank" rel="noopener">Slow Cup 플레이리스트</a> 앱에서 만든 뒤 보관함으로 가져오세요. 타임스탬프는 실제 곡 길이에 맞게 고친 뒤 올리세요.</p>
+      <p class="note">보관함에서 <b>영상용으로 선택</b>한 곡이 있으면 그 곡으로, 없으면 만들기 탭에서 <b>한번에 만든 곡</b>으로 타임스탬프를 만듭니다. 타임스탬프는 실제 곡 길이에 맞게 고친 뒤 올리세요.</p>
     </div>
     <div class="panel" id="thumbPanel">
       <div class="block-head"><h3>썸네일 시안</h3><span class="meta">1280 × 720 · 유튜브 권장 크기</span></div>
@@ -273,12 +274,6 @@ summary{cursor:pointer;font-weight:600}
       <button class="btn ghost small" id="backup">백업 복사</button>
     </div>
     <div id="libList" class="block" style="gap:10px"></div>
-    <details class="panel" id="importBox">
-      <summary>플레이리스트 가져오기</summary>
-      <p class="meta" style="margin:8px 0 0"><a href="playlist.html" target="_blank" rel="noopener">Slow Cup 플레이리스트</a> 앱에서 <b>앱 보관함용 복사</b>를 누른 뒤 아래 칸에 붙여 넣으세요.</p>
-      <textarea id="importText" rows="4" style="font:inherit;font-family:var(--mono);font-size:12.5px;width:100%;margin-top:8px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px" placeholder='{"slowcup":1,"songs":[...]}'></textarea>
-      <div class="row" style="margin-top:8px"><button class="btn" id="importBtn">보관함에 넣기</button><span class="meta" id="importMsg"></span></div>
-    </details>
   </section>
 
   <!-- LOG -->
@@ -539,7 +534,7 @@ ${tags.join(" ")}`;
 }
 
 
-const EMPTY_TRACKS="(보관함에서 영상용으로 선택한 곡이 아직 없어요)";
+const EMPTY_TRACKS="(만들기 탭에서 여러 곡을 한번에 만들면 여기에 곡 목록이 들어가요)";
 // ---------- helpers ----------
 const h=t=>String(t??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
@@ -634,15 +629,6 @@ $("libList").addEventListener("change",async e=>{const c=e.target.closest(".card
 $("libList").addEventListener("click",async e=>{const b=e.target.closest("button[data-act]");if(!b)return;const c=b.closest(".card");const s=Store.get(c.dataset.id);if(!s)return;
   if(b.dataset.act==="copy")copy(songText(s));
   if(b.dataset.act==="del"){if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="한 번 더 누르면 삭제";setTimeout(()=>{b.classList.remove("armed");b.textContent="삭제"},3000);return}await Store.del(s.id);toast("삭제했어요")}});
-$("importBtn").onclick=async()=>{
-  let data;try{data=JSON.parse($("importText").value.trim())}catch(e){$("importMsg").textContent="형식이 맞지 않아요. 플레이리스트 앱에서 복사한 내용을 그대로 붙여 넣어 주세요.";return}
-  const songs=data&&data.slowcup===1&&Array.isArray(data.songs)?data.songs:null;
-  if(!songs||!songs.length){$("importMsg").textContent="가져올 곡이 없어요.";return}
-  $("importBtn").disabled=true;const base=Date.now();
-  for(let i=0;i<songs.length;i++){const s=songs[i];if(!s||typeof s.title!=="string")continue;
-    const it=songItem({title:s.title,titleKo:String(s.titleKo||""),styleText:String(s.styleText||""),exclude:String(s.exclude||""),lyrics:String(s.lyrics||""),bpm:Number(s.bpm)||"",key:String(s.key||""),style:STYLES[s.style]?s.style:"bossa",vocal:VOCAL_KO[s.vocal]?s.vocal:"inst",mood:s.mood,place:s.place});
-    it.created=new Date(base+i).toISOString();await Store.put(it)}
-  $("importBtn").disabled=false;$("importText").value="";$("importMsg").textContent=songs.length+"곡을 보관함에 넣었어요.";toast("가져왔어요")};
 $("backup").onclick=()=>copy(JSON.stringify([...Store.items.values()],null,1));
 
 // ---------- 30-day plan ----------
@@ -862,7 +848,7 @@ const thFontsReady=(document.fonts?Promise.all([document.fonts.load('700 100px "
 // ---------- batch create ----------
 let batch=[];
 function makeBatch(){
-  const c=cfg(),n=Math.max(2,Math.min(20,parseInt($("batchN").value)||13));$("batchN").value=n;
+  const c=cfg(),n=Math.max(2,Math.min(40,parseInt($("batchN").value)||13));$("batchN").value=n;
   const used=new Set(),path=pick(KEY_PATH);
   const styles=$("batchMix").checked?[c.style,c.style,...NEIGHBOR[c.style]]:[c.style];
   const vocalIdx=new Set();if($("batchVocal").checked&&c.vocal==="inst"){vocalIdx.add(Math.round(n*.5));if(n>=10)vocalIdx.add(Math.round(n*.8))}
@@ -881,9 +867,10 @@ function makeBatch(){
   $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)}${s.vocal!=="inst"?" · "+VOCAL_KO[s.vocal]:""}</span></summary>
     <pre class="out" style="margin-top:8px">${h(songText(s))}</pre>
     <div class="row" style="margin-top:8px"><button class="btn ghost small" data-bcopy="${i}">복사</button><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
-  $("batchSave").disabled=false;$("batchCopy").disabled=false;
+  $("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;syncTracks();
 }
 $("batchMake").onclick=makeBatch;
+$("batchSheet").onclick=()=>copy(["번호\t제목\t한글 제목\t스타일\tBPM\t키\t보컬\tStyle 프롬프트",...batch.map((s,i)=>[i+1,s.title,s.titleKo,STYLES[s.style].ko,s.bpm,s.key,VOCAL_KO[s.vocal],s.styleText].join("\t"))].join("\n"));
 $("batchSave").onclick=async()=>{const b=$("batchSave");b.disabled=true;const base=Date.now();
   for(let i=0;i<batch.length;i++){const it=songItem(batch[i]);it.created=new Date(base+i).toISOString();await Store.put(it)}
   b.disabled=false;toast(batch.length+"곡을 보관함에 저장했어요")};
@@ -901,8 +888,9 @@ $("copyOne").onclick=()=>copy(songText(one),$("oneLyr"));
 ["mood","place","style","vocal","lang"].forEach(id=>$(id).addEventListener("change",()=>{save();renderOne();renderYT();$("aiNote").textContent=""}));
 ["channel","avg"].forEach(id=>$(id).addEventListener("change",()=>{save();syncTracks()}));
 
-function syncTracks(){list=Store.all("song").filter(s=>s.status==="picked").sort((a,b)=>(a.created||"").localeCompare(b.created||""));
-  $("ytSource").textContent=list.length?`영상용 곡 ${list.length}곡 · 약 ${Math.round(list.length*(parseFloat($("avg").value)||3.2))}분`:"영상용으로 선택한 곡이 없어요";renderYT()}
+function syncTracks(){const picked=Store.all("song").filter(s=>s.status==="picked").sort((a,b)=>(a.created||"").localeCompare(b.created||""));
+  list=picked.length?picked:batch;const mins=Math.round(list.length*(parseFloat($("avg").value)||3.2));
+  $("ytSource").textContent=picked.length?`보관함의 영상용 곡 ${list.length}곡 · 약 ${mins}분`:batch.length?`만들기 탭에서 한번에 만든 곡 ${list.length}곡 · 약 ${mins}분`:"아직 곡이 없어요. 만들기 탭에서 여러 곡을 한번에 만들어 보세요.";renderYT()}
 Store.on(()=>{renderLib();renderPlan();renderLog();syncTracks()});
 renderOne();renderLib();renderPlan();renderLog();syncTracks();
 try{const v=localStorage.getItem("slowcup-view");if(VIEWS.includes(v))go(v)}catch(e){}
