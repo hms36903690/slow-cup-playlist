@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+<title>Slow Cup Jazz</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: phone-style app — sticky app bar, one screen per tab, fixed bottom tab bar; on wide screens the same column, centered */
+:root{
+  --bg:#eef0ec; --surface:#f8f9f6; --ink:#1f2a28; --muted:#5d6b67; --line:#cfd6d1;
+  --accent:#1e5b55; --on-accent:#f8f9f6; --brass:#a5782c; --chip:#e1e7e3; --good:#2f7a4a; --bad:#a3412f;
+  --display:"Gowun Batang", "Nanum Myeongjo", Georgia, serif;
+  --body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141a19; --surface:#1c2422; --ink:#e4ebe7; --muted:#9aa9a4; --line:#2f3b38;
+  --accent:#6fbdb3; --on-accent:#10201d; --brass:#d6a856; --chip:#25302d; --good:#6cc28c; --bad:#e08a76; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a19; --surface:#1c2422; --ink:#e4ebe7; --muted:#9aa9a4; --line:#2f3b38;
+  --accent:#6fbdb3; --on-accent:#10201d; --brass:#d6a856; --chip:#25302d; --good:#6cc28c; --bad:#e08a76; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;
+  padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.appbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.appbar .in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.brand{font-family:var(--display);font-weight:700;font-size:20px;line-height:1}
+.brand small{display:block;font-family:var(--body);font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.06em;margin-top:3px}
+.sync{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right}
+main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px}
+.view{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h2{font-family:var(--display);font-size:24px;margin:0;line-height:1.3;text-wrap:balance}
+.lead{margin:-8px 0 0;color:var(--muted);font-size:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500;min-width:0}
+select,input[type=text],input[type=number],input[type=date]{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 9px;width:100%;min-width:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.check{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:13.5px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font:inherit;font-weight:600;font-size:14px;border-radius:6px;padding:9px 14px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent)}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.small{font-size:12.5px;padding:5px 10px}
+.btn.danger{border-color:var(--bad);color:var(--bad);background:transparent}
+.btn.danger.armed{background:var(--bad);color:var(--surface)}
+.btn:disabled{opacity:.5;cursor:default}
+.block{display:flex;flex-direction:column;gap:6px;min-width:0}
+.block-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.block-head h3{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+pre.out{margin:0;font-family:var(--mono);font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:12px 14px;max-height:460px;overflow:auto}
+.meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meta.warn{color:var(--brass)}
+.title-big{font-family:var(--display);font-size:23px;margin:0;line-height:1.3}
+.title-sub{color:var(--muted);margin:0;font-size:13.5px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.04em;white-space:nowrap}
+.tbl{overflow-x:auto}
+.pill{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:99px;background:var(--chip);color:var(--ink);white-space:nowrap}
+.pill.v{background:transparent;border:1px solid var(--brass);color:var(--brass)}
+.pill.ok{background:transparent;border:1px solid var(--good);color:var(--good)}
+details{border-bottom:1px solid var(--line);padding:8px 0}
+summary{cursor:pointer;font-weight:600}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--brass);padding:4px 0 4px 12px;margin:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.stat b{display:block;font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:4px 12px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card h4{margin:0;font-family:var(--display);font-size:17px;line-height:1.3}
+.empty{color:var(--muted);text-align:center;padding:28px 12px;border:1px dashed var(--line);border-radius:10px;font-size:14px}
+.day{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}
+.day .d{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);line-height:1.35}
+.day .d b{display:block;color:var(--ink);font-size:15px}
+.day.up .d b{color:var(--accent)}
+.day.today{background:var(--chip);border-radius:8px;padding-inline:8px}
+.day.done .t{color:var(--muted);text-decoration:line-through}
+.day input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+.ai{border-color:var(--brass);color:var(--brass)}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
+  padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabbar button{font:inherit;font-size:11.5px;font-weight:600;background:none;border:none;color:var(--muted);padding:8px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;min-width:0}
+.tabbar button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tabbar button[aria-current=page]{color:var(--accent)}
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.thumbs button{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:stretch;font:inherit;font-size:12px;color:var(--muted);min-width:0}
+.thumbs button canvas{width:100%;height:auto;border-radius:6px;display:block}
+.thumbs button[aria-pressed=true]{border-color:var(--accent);color:var(--accent);font-weight:600}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+@media (max-width:520px){.stats b{font-size:19px}}
+</style>
+
+<header class="appbar"><div class="in">
+  <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true" style="flex:none"><rect x="1" y="1" width="30" height="30" rx="8" fill="var(--accent)"/><path d="M9 14h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z" fill="none" stroke="var(--on-accent)" stroke-width="1.8"/><path d="M21 15.5h1.5a2.3 2.3 0 0 1 0 4.6H21" fill="none" stroke="var(--on-accent)" stroke-width="1.8"/><path d="M13 11c0-1.2 1.2-1.4 1.2-2.6M16.5 11c0-1.2 1.2-1.4 1.2-2.6" stroke="var(--on-accent)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+  <div class="brand">Slow Cup Jazz<small>카페 재즈 채널 운영 앱</small></div>
+  <div class="sync" id="sync">불러오는 중</div>
+</div></header>
+
+<main>
+  <!-- shared settings -->
+  <section class="view" id="settingsWrap" style="margin-bottom:16px">
+    <div class="panel" aria-label="오늘의 주문">
+      <div class="grid">
+        <label>분위기<select id="mood"></select></label>
+        <label>장소 · 용도<select id="place"></select></label>
+        <label>재즈 스타일<select id="style"></select></label>
+        <label>보컬<select id="vocal">
+          <option value="inst">연주곡</option><option value="female">여성 보컬</option>
+          <option value="male">남성 보컬</option><option value="scat">허밍·스캣</option></select></label>
+        <label>가사 언어<select id="lang">
+          <option value="ko">한국어</option><option value="en">영어</option><option value="mix">한국어 + 영어 후렴</option></select></label>
+        <label>채널 이름<input type="text" id="channel" value="Slow Cup Jazz"></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- CREATE -->
+  <section class="view" id="v-create">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div class="block" style="gap:2px">
+          <p class="title-big" id="oneTitle"></p>
+          <p class="title-sub" id="oneTitleKo"></p>
+        </div>
+        <div class="row">
+          <button class="btn" id="reroll">다시 뽑기</button>
+          <button class="btn ghost" id="saveOne">보관함에 저장</button>
+        </div>
+      </div>
+      <div class="block">
+        <div class="block-head"><h3>Style of Music</h3><button class="btn ghost small" data-copy="oneStyle">복사</button></div>
+        <pre class="out" id="oneStyle"></pre>
+        <div class="meta" id="oneStyleLen"></div>
+      </div>
+      <div class="block">
+        <div class="block-head"><h3>Exclude Styles</h3><button class="btn ghost small" data-copy="oneEx">복사</button></div>
+        <pre class="out" id="oneEx"></pre>
+      </div>
+      <div class="block">
+        <div class="block-head"><h3 id="lyrHead">Lyrics</h3>
+          <div class="row"><button class="btn ghost small ai" id="aiLyrics" hidden>AI로 가사 새로 쓰기</button><button class="btn ghost small" data-copy="oneLyr">복사</button></div></div>
+        <pre class="out" id="oneLyr"></pre>
+        <div class="meta" id="aiNote"></div>
+      </div>
+      <div class="row"><button class="btn ghost" id="copyOne">세 칸 전체 복사</button></div>
+      <p class="note">Suno → Create → Custom에서 Style 칸, Exclude 칸, Lyrics 칸에 각각 붙여 넣으세요. 연주곡이면 Instrumental을 켭니다. 수익 채널에 쓸 곡은 유료 플랜 가입 중에 만들어야 합니다.</p>
+    </div>
+  </section>
+
+  <!-- UPLOAD -->
+  <section class="view" id="v-yt" hidden>
+    <div class="panel">
+      <div class="row" style="align-items:end">
+        <label style="flex:0 1 160px">평균 곡 길이(분)<input type="number" id="avg" min="1.5" max="6" step="0.1" value="3.2"></label>
+        <div class="meta" id="ytSource" style="flex:1 1 200px"></div>
+      </div>
+      <p class="note">보관함에서 <b>영상용으로 선택</b>한 곡을 저장한 순서대로 타임스탬프에 넣습니다. 20곡 구성은 <a href="playlist.html" target="_blank" rel="noopener">Slow Cup 플레이리스트</a> 앱에서 만든 뒤 보관함으로 가져오세요. 타임스탬프는 실제 곡 길이에 맞게 고친 뒤 올리세요.</p>
+    </div>
+    <div class="panel" id="thumbPanel">
+      <div class="block-head"><h3>썸네일 시안</h3><span class="meta">1280 × 720 · 유튜브 권장 크기</span></div>
+      <div class="grid">
+        <label>배경<select id="thBg">
+          <option value="auto">분위기에 맞게 (자동)</option>
+          <option value="rain">비 오는 창가</option><option value="sunny">햇살 창가</option><option value="evening">노을 창가</option>
+          <option value="night">밤 창가</option><option value="autumn">가을 창가</option><option value="winter">눈 오는 창가</option><option value="spring">봄 창가</option>
+        </select></label>
+        <label>큰 글씨 1줄<input type="text" id="thL1" maxlength="16"></label>
+        <label>큰 글씨 2줄<input type="text" id="thL2" maxlength="16"></label>
+        <label>작은 글씨<input type="text" id="thSub" maxlength="32"></label>
+        <label>글자색<select id="thColor"><option value="light">밝은 크림색</option><option value="white">흰색</option><option value="warm">따뜻한 노란빛</option></select></label>
+        <label>내 이미지<input type="file" id="thFile" accept="image/*" style="font-size:12.5px"></label>
+        <label>배경 어둡게<input type="range" id="thDim" min="0" max="70" value="25"></label>
+      </div>
+      <div class="row">
+        <button class="btn ghost small" id="thRefill">문구 다시 채우기</button>
+        <button class="btn ghost small" id="thRedraw">배경 다시 그리기</button>
+        <button class="btn ghost small" id="thClearImg" hidden>내 이미지 빼기</button>
+      </div>
+      <div class="thumbs" id="thVariants" role="group" aria-label="배치 고르기"></div>
+      <img id="thBig" alt="선택한 썸네일 시안" style="width:100%;border-radius:8px;border:1px solid var(--line);aspect-ratio:16/9;background:var(--chip)">
+      <div class="row">
+        <button class="btn" id="thSave">PNG로 저장</button>
+        <span class="meta" id="thMsg">모든 썸네일에 같은 창가 자리를 쓰고 날씨만 바꾸면, 목록에서 한눈에 우리 채널인 게 보입니다.</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="block"><div class="block-head"><h3>제목 후보</h3><button class="btn ghost small" data-copy="ytTitles">복사</button></div><pre class="out" id="ytTitles"></pre></div>
+      <div class="block"><div class="block-head"><h3>썸네일 문구</h3><button class="btn ghost small" data-copy="ytThumb">복사</button></div><pre class="out" id="ytThumb"></pre></div>
+      <div class="block"><div class="block-head"><h3>설명란</h3><button class="btn ghost small" data-copy="ytDesc">복사</button></div><pre class="out" id="ytDesc"></pre></div>
+      <div class="block"><div class="block-head"><h3>해시태그 · 태그</h3><button class="btn ghost small" data-copy="ytTags">복사</button></div><pre class="out" id="ytTags"></pre></div>
+    </div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section class="view" id="v-lib" hidden>
+    <h2>곡 보관함</h2>
+    <p class="lead">저장한 프롬프트를 Suno에서 만들었는지, 영상에 쓸 곡으로 골랐는지 표시해 두세요.</p>
+    <div class="stats" id="libStats"></div>
+    <div class="row" style="justify-content:space-between">
+      <div class="chips" id="libFilter">
+        <button class="chip" data-f="all" aria-pressed="true">전체</button>
+        <button class="chip" data-f="prompt" aria-pressed="false">프롬프트만</button>
+        <button class="chip" data-f="made" aria-pressed="false">생성함</button>
+        <button class="chip" data-f="picked" aria-pressed="false">영상용 선택</button>
+      </div>
+      <button class="btn ghost small" id="backup">백업 복사</button>
+    </div>
+    <div id="libList" class="block" style="gap:10px"></div>
+    <details class="panel" id="importBox">
+      <summary>플레이리스트 가져오기</summary>
+      <p class="meta" style="margin:8px 0 0"><a href="playlist.html" target="_blank" rel="noopener">Slow Cup 플레이리스트</a> 앱에서 <b>앱 보관함용 복사</b>를 누른 뒤 아래 칸에 붙여 넣으세요.</p>
+      <textarea id="importText" rows="4" style="font:inherit;font-family:var(--mono);font-size:12.5px;width:100%;margin-top:8px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px" placeholder='{"slowcup":1,"songs":[...]}'></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn" id="importBtn">보관함에 넣기</button><span class="meta" id="importMsg"></span></div>
+    </details>
+  </section>
+
+  <!-- LOG -->
+  <section class="view" id="v-log" hidden>
+    <h2>30일 일정</h2>
+    <p class="lead">화·목·토 저녁 7시 업로드 기준입니다. 업로드 날의 "이 주제로 만들기"를 누르면 설정이 바뀌고 플레이리스트가 만들어집니다.</p>
+    <div class="panel">
+      <div class="row" style="align-items:end">
+        <label style="flex:1 1 160px">시작일<input type="date" id="planStart"></label>
+        <div class="meta" id="planProgress" style="flex:1 1 160px"></div>
+      </div>
+      <div id="planList"></div>
+    </div>
+
+    <h2 style="margin-top:8px">영상 성과 기록</h2>
+    <p class="lead">유튜브 스튜디오 → 분석에서 숫자를 옮겨 적으세요. 업로드 후 7일째 숫자로 비교하면 공평합니다.</p>
+    <div class="panel">
+      <form id="logForm" class="grid">
+        <label style="grid-column:1/-1">영상 제목<input type="text" id="lgTitle" required placeholder="비 오는 날 카페에서 듣기 좋은 재즈 | 1시간"></label>
+        <label>업로드일<input type="date" id="lgDate"></label>
+        <label>조회수<input type="number" id="lgViews" min="0"></label>
+        <label>노출 클릭률(%)<input type="number" id="lgCtr" min="0" max="100" step="0.1"></label>
+        <label>평균 시청(분)<input type="number" id="lgAvd" min="0" step="0.1"></label>
+        <label>구독 증가<input type="number" id="lgSubs"></label>
+        <label style="align-self:end"><button class="btn" type="submit">기록 추가</button></label>
+      </form>
+      <div class="stats" id="logStats"></div>
+      <div class="tbl"><table>
+        <thead><tr><th>제목</th><th>날짜</th><th>조회</th><th>클릭률</th><th>평균 시청</th><th>구독</th><th></th></tr></thead>
+        <tbody id="logBody"></tbody>
+      </table></div>
+      <div class="row"><button class="btn ghost ai" id="aiNext" hidden>AI에게 다음 주제 추천받기</button></div>
+      <pre class="out" id="aiNextOut" hidden></pre>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar" aria-label="화면"><div class="in">
+  <button data-v="v-create" aria-current="page"><svg viewBox="0 0 24 24"><path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>만들기</button>
+  <button data-v="v-yt"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg>업로드</button>
+  <button data-v="v-lib"><svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="m16 5 3.8-1 3 15.4-3.8.9z"/></svg>보관함</button>
+  <button data-v="v-log"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6"/></svg>일정·기록</button>
+</div></nav>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const MOODS={
+ rain:{ko:"비 오는 날",en:"Rainy Day",kw:"cozy rainy day mood, mellow and warm",
+  nEn:["Raindrops","Window Rain","Wet Pavement","Umbrella","Gray Morning","Drizzle","Puddles","Rain Letter"],
+  nKo:["빗방울","창가의 비","젖은 골목","우산 아래","흐린 아침","가랑비","물웅덩이","비의 편지"],
+  lyKo:["창가에 맺힌 빗방울 하나","젖은 우산을 문 옆에 세워 두고","따뜻한 잔을 두 손에 감싸면","빗소리가 오늘을 천천히 지워 가","흐린 하늘도 나쁘지 않은 걸","유리창 너머 번지는 불빛","조금 늦어도 괜찮은 아침","커피 향이 빗소리에 섞여"],
+  lyEn:["Raindrops writing on the window glass","Hang my coat and stay a while","Steam is rising from my cup","Let the gray sky slow the day","Streetlights blur in silver lines","Nothing here is in a hurry","The rhythm of the rain keeps time","A quiet booth, a borrowed hour"],
+  hookKo:["비 오는 날의 카페에서","빗소리와 재즈 사이로"],hookEn:["Come in from the rain","Rainy day café"]},
+ sunny:{ko:"햇살 좋은 오후",en:"Sunny Afternoon",kw:"bright sunny afternoon, breezy and light",
+  nEn:["Sunlit Table","Open Window","Lemon Light","Blue Cup","Easy Breeze","Golden Hour","Terrace Chair","Paper Plane"],
+  nKo:["햇살 테이블","열린 창문","레몬빛 오후","파란 잔","산들바람","오후 세 시","테라스 의자","종이비행기"],
+  lyKo:["햇살이 테이블 위로 쏟아지고","창문을 열면 바람이 먼저 와","오후 세 시의 느린 그림자","레몬빛 오후가 길게 늘어져","아무 계획 없는 하루가 좋아","잔에 비친 하늘이 맑아","거리의 웃음소리가 들려와","천천히 걸어도 되는 날"],
+  lyEn:["Sunlight spilling on the table","Open window, easy breeze","Three o'clock and shadows stretching","Lemon light on every street","No plans, and that's alright","Blue sky floating in my cup","Laughter drifting from the corner","Take the long way home today"],
+  hookKo:["햇살 좋은 오후의 재즈","눈부신 오후 세 시"],hookEn:["Sunny side café","Golden afternoon"]},
+ evening:{ko:"노을 지는 저녁",en:"Evening Glow",kw:"warm sunset glow, gently nostalgic",
+  nEn:["Amber Street","Sundown","Violet Window","First Lights","Homeward","Dusk Café","Orange Sky","Last Sip"],
+  nKo:["주황빛 거리","해 질 녘","보랏빛 창","첫 불빛","집으로 가는 길","저녁 카페","노을 하늘","마지막 한 모금"],
+  lyKo:["노을이 유리컵에 내려앉고","하루를 접어 주머니에 넣어","주황빛 거리 위를 걸어","불이 하나둘 켜지는 시간","오늘도 수고했다고 말해 줘","식어 가는 커피도 다정해","창밖은 천천히 보랏빛","집으로 가는 길이 가벼워"],
+  lyEn:["Sunset settling in my glass","Fold the day and let it go","Amber streets beneath my feet","One by one the lights come on","Tell me that I did okay","Even cooling coffee feels kind","The window turning violet","The road back home feels light"],
+  hookKo:["노을 지는 카페에서","하루 끝의 작은 재즈"],hookEn:["Café at sundown","Little jazz at dusk"]},
+ night:{ko:"늦은 밤",en:"Late Night",kw:"late night intimate, dim lights, calm",
+  nEn:["Midnight Lamp","Slow Record","Last Guest","City Breath","Streetlight Stars","Night Booth","After Hours","Low Piano"],
+  nKo:["자정의 램프","느린 레코드","마지막 손님","도시의 숨","가로등 별","밤의 자리","영업 끝난 뒤","낮은 피아노"],
+  lyKo:["늦은 밤 작은 불빛 아래","도시가 조용히 숨을 고르면","마지막 손님처럼 머물러","레코드가 천천히 돌아가","잠들지 못한 마음을 달래","별 대신 가로등이 빛나","낮은 피아노 소리를 따라","오늘의 끝에 기대어"],
+  lyEn:["Under one small lamp tonight","The city breathing slow and low","Staying like the last guest here","The record spinning round and round","Soothing all the restless thoughts","Streetlights standing in for stars","Following a low piano line","Leaning on the end of day"],
+  hookKo:["깊은 밤의 재즈 카페","잠들기 전 마지막 노래"],hookEn:["Midnight café","One last song tonight"]},
+ autumn:{ko:"가을",en:"Autumn",kw:"autumn warmth, cinnamon and soft wool",
+  nEn:["Falling Leaves","Cinnamon","Sweater Weather","Rustling Lane","Maple Latte","Turning Pages","High Sky","October Window"],
+  nKo:["낙엽","시나몬","니트의 계절","바스락 골목","메이플 라떼","넘기는 책장","높은 하늘","시월의 창"],
+  lyKo:["낙엽이 창가를 스치고","니트 소매 끝에 남은 온기","계피 향 가득한 오후","바스락 걷는 골목길","가을은 늘 조금 느리게 와","따뜻한 라떼 위에 그린 마음","높아진 하늘이 깊어져","책 한 장 넘기는 소리"],
+  lyEn:["Falling leaves brush past the pane","Warmth left in my sweater sleeves","Cinnamon in afternoon air","Footsteps rustling down the lane","Autumn always takes its time","A heart drawn in my latte foam","The sky has grown so high and deep","The sound of turning one more page"],
+  hookKo:["가을 카페의 오후","낙엽처럼 흐르는 재즈"],hookEn:["Autumn café","Falling like the leaves"]},
+ winter:{ko:"겨울",en:"Winter",kw:"cozy winter, fireplace warmth, soft and gentle",
+  nEn:["Snowy Corner","Warm Mug","Frosted Glass","Woolen Scarf","Cocoa Night","Heater Side","First Snow","White Street"],
+  nKo:["눈 내리는 모퉁이","따뜻한 머그","성에 낀 창","목도리","코코아의 밤","난로 곁","첫눈","하얀 거리"],
+  lyKo:["하얀 입김이 유리에 번지고","눈 내리는 거리 모퉁이","따뜻한 머그잔의 온도","목도리에 묻힌 작은 웃음","창밖엔 눈, 안에는 노래","난로 곁에 앉은 오후","조용히 쌓이는 겨울","코코아처럼 달콤한 밤"],
+  lyEn:["My breath is fogging up the glass","Snow on the corner of the street","The warmth of a heavy mug","A small smile hidden in my scarf","Snow outside, a song within","An afternoon beside the heater","Winter settling soft and slow","A night as sweet as cocoa"],
+  hookKo:["눈 오는 날의 카페","따뜻한 겨울 재즈"],hookEn:["Snowy day café","Warm winter jazz"]},
+ spring:{ko:"봄",en:"Spring",kw:"fresh spring morning, light and hopeful",
+  nEn:["Petal Wind","New Notebook","Green Street","Windowsill Plant","Spring Shoulder","Cherry Shade","Morning Walk","Soft Bloom"],
+  nKo:["꽃잎 바람","새 노트","연둣빛 거리","창가의 화분","봄볕","벚꽃 그늘","아침 산책","작은 꽃"],
+  lyKo:["꽃잎이 바람에 실려 와","새 노트를 펼치는 아침","연둣빛 거리를 걸어","창가에 놓인 작은 화분","봄볕이 어깨에 내려앉아","설레는 마음을 감추지 못해","느린 오후의 산책길","벚꽃 아래 쉬어 가"],
+  lyEn:["Petals riding on the wind","Opening a brand new notebook","Walking down the pale green street","A little plant on the windowsill","Spring sun resting on my shoulder","Can't quite hide this flutter","A slow walk through the afternoon","Resting under cherry blooms"],
+  hookKo:["봄날의 카페 테라스","꽃잎처럼 가벼운 재즈"],hookEn:["Spring terrace café","Light as petals"]}
+};
+const PLACES={
+ cafe:{ko:"카페",en:"Café",kw:"coffee shop background music",nEn:["Corner Café","Window Seat","Counter","Little Café"],
+  lyKo:["문 위의 작은 종이 울리고","창가 자리에 앉아 잔을 내려놓고"],lyEn:["The bell above the door rings soft","I set my cup down by the window seat"]},
+ bookstore:{ko:"책방",en:"Bookstore",kw:"quiet bookstore ambience",nEn:["Bookshop","Reading Nook","Library Corner","Old Bookstore"],
+  lyKo:["오래된 책 냄새 사이로","책갈피 하나 끼워 둔 채로"],lyEn:["Between the smell of old books","A bookmark resting in my hand"]},
+ bakery:{ko:"베이커리",en:"Bakery",kw:"cheerful bakery morning",nEn:["Bakery","Oven Window","Morning Counter","Bread Shop"],
+  lyKo:["갓 구운 빵 냄새가 번져","따뜻한 오븐 앞 작은 의자"],lyEn:["Fresh bread warming up the air","A little chair beside the oven"]},
+ shop:{ko:"매장",en:"Store",kw:"boutique store background music, unobtrusive",nEn:["Shop Window","Boutique","Flower Shop","Corner Store"],
+  lyKo:["진열장 너머 흐르는 노래","OPEN 팻말이 흔들리고"],lyEn:["A song behind the window display","The open sign is swaying"]},
+ home:{ko:"집·일상",en:"Home",kw:"relaxing at home, everyday background",nEn:["Living Room","Kitchen Table","Balcony","Window"],
+  lyKo:["익숙한 내 방 작은 의자","주전자 물 끓는 소리"],lyEn:["My own small chair at home","The kettle singing on the stove"]},
+ work:{ko:"작업·공부",en:"Work & Study",kw:"focus friendly, steady and unobtrusive",nEn:["Desk","Studio","Library","Writing Desk"],
+  lyKo:["펼쳐 둔 노트 위의 오후","연필 소리만 남은 책상"],lyEn:["An afternoon on open notes","Only pencils on the desk"]}
+};
+const STYLES={
+ bossa:{ko:"보사노바 카페재즈",name:"bossa nova café jazz",inst:["nylon string guitar","soft brushed drums","upright bass","warm Rhodes","light flute","shaker"],lead:"nylon guitar",bpm:[100,124],forms:["Bossa","Samba Breeze","Café Bossa"]},
+ trio:{ko:"재즈 피아노 트리오",name:"jazz piano trio",inst:["soft grand piano","upright bass","brushed snare","gentle ride cymbal"],lead:"piano",bpm:[72,96],forms:["Waltz","Sketch","Piano Note"]},
+ swing:{ko:"가벼운 어쿠스틱 스윙",name:"light acoustic swing jazz",inst:["hollow-body jazz guitar","upright bass","brushes","clarinet","piano comping"],lead:"clarinet",bpm:[112,138],forms:["Swing","Stroll","Shuffle"]},
+ ballad:{ko:"느린 재즈 발라드",name:"slow jazz ballad",inst:["muted trumpet","felt piano","upright bass","soft brushes"],lead:"muted trumpet",bpm:[60,76],forms:["Ballad","Serenade","Lullaby"]},
+ lounge:{ko:"스무스 라운지 재즈",name:"smooth lounge jazz",inst:["Rhodes electric piano","soft tenor saxophone","fretless bass","light drums","vibraphone"],lead:"tenor saxophone",bpm:[84,104],forms:["Lounge","Blue Hour","Groove"]},
+ jazzhop:{ko:"재지 로파이",name:"jazzy lo-fi hip hop",inst:["dusty piano chords","mellow upright bass","laid-back drums","vinyl crackle","soft guitar licks"],lead:"piano",bpm:[72,88],forms:["Beat","Loop","Tape"]}
+};
+const NEIGHBOR={bossa:["lounge","trio"],trio:["ballad","bossa"],swing:["bossa","trio"],ballad:["trio","lounge"],lounge:["bossa","jazzhop"],jazzhop:["lounge","trio"]};
+const KEYS=["C major","G major","D major","A minor","E minor","F major","Bb major","Eb major","D minor","G minor"];
+const VOCAL={inst:"instrumental, no vocals",female:"soft breathy female jazz vocal",male:"warm mellow male jazz vocal",scat:"gentle humming and light scat, wordless vocals"};
+const VOCAL_KO={inst:"연주곡",female:"여성 보컬",male:"남성 보컬",scat:"허밍"};
+const ADJ=["Slow","Quiet","Soft","Velvet","Little","Warm","Gentle","Easy"];
+const CHO_KO=["천천히, 아주 천천히","이 노래가 끝나기 전까지","조금만 더 머물러 줘요","커피 한 잔의 여유처럼","오늘은 쉬어 가도 돼요","작은 테이블 위의 행복","멜로디에 기대어 쉬어","괜찮아, 지금 이대로"];
+const CHO_EN=["Slowly, oh so slowly","Before this song is over","Stay a little longer","Like a cup of quiet time","It's okay to rest today","Happiness on a little table","Lean into the melody","We're fine just as we are"];
+const KO_FORM=["{n}","{n}의 왈츠","{n} 아래서","{n}, 그리고 재즈","{n}의 오후","{n}에 기대어"];
+
+// seeded random
+let seed=Date.now()%100000;
+function rng(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+const pick=a=>a[Math.floor(rng()*a.length)];
+const pickN=(a,n)=>{const c=a.slice(),o=[];while(o.length<n&&c.length)o.push(c.splice(Math.floor(rng()*c.length),1)[0]);return o};
+const rint=(a,b)=>a+Math.floor(rng()*(b-a+1));
+const $=id=>document.getElementById(id);
+
+// fill selects
+function fill(id,obj,lab){$(id).innerHTML=Object.entries(obj).map(([k,v])=>`<option value="${k}">${lab(v)}</option>`).join("")}
+fill("mood",MOODS,v=>v.ko);fill("place",PLACES,v=>v.ko);fill("style",STYLES,v=>v.ko);
+// restore settings
+const SKEY="slowcup-settings";
+try{const s=JSON.parse(localStorage.getItem(SKEY)||"{}");for(const k in s){if($(k)){if($(k).type==="checkbox")$(k).checked=s[k];else $(k).value=s[k]}}}catch(e){}
+function save(){try{const o={};["mood","place","style","vocal","lang","channel","count","avg","mixStyle","mixVocal"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
+const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").value,vocal:$("vocal").value,lang:$("lang").value});
+
+function makeTitle(m,p,s,used){
+  const M=MOODS[m],P=PLACES[p],S=STYLES[s];
+  for(let i=0;i<30;i++){
+    const idx=Math.floor(rng()*M.nEn.length);
+    const n=M.nEn[idx],nk=M.nKo[idx];
+    const t=pick([()=>`${pick(ADJ)} ${n}`,()=>`${n} at the ${pick(P.nEn)}`,()=>`${n} ${pick(S.forms)}`,()=>`${n}`,()=>`${pick(ADJ)} ${n} ${pick(S.forms)}`])();
+    const k=pick(KO_FORM).replace("{n}",nk);
+    if(!used||!used.has(t)){used&&used.add(t);return{en:t,ko:k}}
+  }
+  return{en:M.nEn[0]+" "+rint(2,9),ko:M.nKo[0]};
+}
+function makeStyle(c,bpm,key){
+  const S=STYLES[c.style],M=MOODS[c.mood],P=PLACES[c.place];
+  const inst=pickN(S.inst,Math.min(4,S.inst.length)).join(", ");
+  return `${S.name}, ${inst}, ${bpm} BPM, ${key}, ${M.kw}, ${P.kw}, warm vintage mix, soft dynamics, ${VOCAL[c.vocal]}`;
+}
+const EXCLUDE="heavy drums, distorted guitar, EDM drops, loud brass, aggressive vocals, autotune";
+function verse(c,lang){
+  const M=MOODS[c.mood],P=PLACES[c.place];
+  const k=lang==="ko"?"lyKo":"lyEn";const L=pickN(M[k],3);L.splice(rint(0,2),0,pick(P[k]));return L.join("\n");
+}
+function chorus(c,lang){
+  const M=MOODS[c.mood];const hook=pick(lang==="ko"?M.hookKo:M.hookEn);const pool=lang==="ko"?CHO_KO:CHO_EN;
+  const [a,b,d]=pickN(pool,3);return [hook,a,b,d].join("\n");
+}
+function makeLyrics(c){
+  const S=STYLES[c.style];
+  if(c.vocal==="inst"||c.vocal==="scat"){
+    const solo=pick(S.inst.filter(x=>x!==S.lead))||S.inst[0];
+    const hum=c.vocal==="scat"?"\n(mm-hmm, da-ba-da)":"";
+    return `[Intro: soft ${S.inst[0]}]\n\n[Theme A: ${S.lead} melody, relaxed]${hum}\n\n[Theme B: warmer, gentle lift]\n\n[Solo: ${solo}, laid-back]\n\n[Theme A Reprise]${hum}\n\n[Outro: slow down, gentle fade out]\n\n[End]`;
+  }
+  const vl=c.lang==="en"?"en":"ko", cl=c.lang==="ko"?"ko":"en";
+  const ch=chorus(c,cl);
+  return `[Intro: soft ${S.inst[0]}]\n\n[Verse 1]\n${verse(c,vl)}\n\n[Chorus]\n${ch}\n\n[Instrumental Break: ${S.lead}]\n\n[Verse 2]\n${verse(c,vl)}\n\n[Chorus]\n${ch}\n\n[Outro: gentle fade out]\n(${cl==="ko"?"천천히":"slowly"}...)\n\n[End]`;
+}
+function makeSong(c,bpm,key,used){
+  const S=STYLES[c.style];
+  bpm=bpm||rint(S.bpm[0],S.bpm[1]);key=key||pick(KEYS);
+  const t=makeTitle(c.mood,c.place,c.style,used);
+  return{...c,bpm,key,title:t.en,titleKo:t.ko,styleText:makeStyle(c,bpm,key),exclude:EXCLUDE,lyrics:makeLyrics(c)};
+}
+const songText=s=>`■ ${s.title} (${s.titleKo})\n[Style]\n${s.styleText}\n[Exclude]\n${s.exclude}\n[Lyrics]\n${s.lyrics}`;
+
+// ONE
+let one;
+function renderOne(){
+  one=makeSong(cfg());
+  $("oneTitle").textContent=one.title;$("oneTitleKo").textContent=one.titleKo+" · "+one.bpm+" BPM · "+one.key;
+  $("oneStyle").textContent=one.styleText;$("oneEx").textContent=one.exclude;$("oneLyr").textContent=one.lyrics;
+  const n=one.styleText.length;$("oneStyleLen").textContent=`${n}자`+(n>200?" · 구형 모델(v4 이하)은 200자 제한이 있으니 악기 1~2개를 지워 주세요":"");
+  $("oneStyleLen").className="meta"+(n>200?" warn":"");
+  $("lyrHead").textContent=(one.vocal==="inst"||one.vocal==="scat")?"Lyrics 칸 (연주곡 구조 태그)":"Lyrics (가사 칸)";
+}
+
+// PLAYLIST
+let list=[];
+const KEY_PATH=[["F major","Bb major","D minor","C major","G minor","Eb major"],["C major","A minor","F major","G major","E minor","D minor"],["G major","D major","E minor","C major","A minor","Bb major"]];
+function renderList(){
+  const c=cfg(),n=Math.max(5,Math.min(40,parseInt($("count").value)||20));
+  const used=new Set(),path=pick(KEY_PATH);
+  const styles=$("mixStyle").checked?[c.style,c.style,...NEIGHBOR[c.style]]:[c.style];
+  const vocalIdx=new Set();if($("mixVocal").checked&&c.vocal==="inst"){[Math.round(n*.3),Math.round(n*.55),Math.round(n*.8)].forEach(i=>vocalIdx.add(i))}
+  list=[];
+  for(let i=0;i<n;i++){
+    const st=i===0?c.style:styles[i%styles.length===0?0:Math.floor(rng()*styles.length)];
+    const S=STYLES[st];const x=i/(n-1);
+    const energy=x<.15?.3:x<.65?.35+.6*Math.sin((x-.15)/.5*Math.PI/2):.9-1.6*(x-.65); // calm → lift → wind down
+    const bpm=Math.round(S.bpm[0]+(S.bpm[1]-S.bpm[0])*Math.max(0,Math.min(1,energy)));
+    const key=path[Math.floor(i/Math.ceil(n/path.length))%path.length];
+    const vocal=vocalIdx.has(i)?(rng()<.5?"female":"male"):c.vocal;
+    list.push(makeSong({...c,style:st,vocal},bpm,key,used));
+  }
+  $("listBody").innerHTML=list.map((s,i)=>`<tr><td>${i+1}</td><td><strong>${s.title}</strong><br><span class="meta">${s.titleKo}</span></td><td>${STYLES[s.style].ko}</td><td>${s.bpm} · ${s.key}</td><td><span class="pill${s.vocal==="inst"?"":" v"}">${VOCAL_KO[s.vocal]}</span></td><td style="white-space:nowrap"><button class="btn ghost small" data-song="${i}">복사</button> <button class="btn ghost small" data-save="${i}">저장</button></td></tr>`).join("");
+  $("listDetails").innerHTML=list.map((s,i)=>`<details><summary>${i+1}. ${s.title}</summary><pre class="out" style="margin-top:8px">${esc(songText(s))}</pre></details>`).join("");
+  renderYT();
+}
+const esc=t=>t.replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+const fmt=sec=>{const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=Math.floor(sec%60);return(h?h+":"+String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0")};
+
+// YOUTUBE
+function renderYT(){
+  const c=cfg(),M=MOODS[c.mood],P=PLACES[c.place],S=STYLES[c.style],ch=$("channel").value.trim()||"Slow Cup Jazz";
+  const avg=(parseFloat($("avg").value)||3.2)*60;const total=list.length*avg;const hrs=Math.max(1,Math.round(total/3600));
+  const dur=total<5400?"1시간":hrs+"시간";const durEn=total<5400?"1 Hour":hrs+" Hours";
+  const where={cafe:"카페에서",bookstore:"책 읽을 때",bakery:"아침에",shop:"매장에서",home:"집에서",work:"작업할 때"}[c.place];
+  const titles=[
+    `${M.ko} ${where} 듣기 좋은 재즈 | ${dur} 카페 재즈 플레이리스트`,
+    `${M.ko}, 조용한 ${S.ko} ${dur} | ${P.ko} 배경음악`,
+    `${P.ko} BGM으로 틀어 두기 좋은 잔잔한 재즈 ${dur} | ${M.ko}`,
+    `${M.en} ${P.en} Jazz | ${durEn} Relaxing ${S.name.replace(/\b\w/g,x=>x.toUpperCase())} Playlist`,
+    `${M.ko} 커피 한 잔과 재즈 | ${M.en} Café Jazz BGM ${durEn}`
+  ];
+  $("ytTitles").textContent=titles.join("\n\n");
+  $("ytThumb").textContent=[`${M.ko}\n카페 재즈`,`${M.en}\nCafé Jazz`,`잔잔하게 틀어 두는\n${P.ko} 재즈`,`${dur}\n${S.ko}`].join("\n\n");
+  let t=0;const stamps=list.map((s,i)=>{const r=`${fmt(t)} ${String(i+1).padStart(2,"0")}. ${s.title}`;t+=avg;return r}).join("\n");
+  const tags=["#카페재즈","#재즈플레이리스트","#카페음악","#매장음악",`#${M.ko.replace(/\s/g,"")}재즈`,"#cafejazz","#jazzplaylist","#relaxingjazz"];
+  $("ytTags").textContent=tags.join(" ")+"\n\n[태그 칸]\n카페 재즈, 재즈 플레이리스트, 카페 음악, 매장 음악, "+M.ko+" 재즈, "+S.ko+", cafe jazz, coffee shop music, "+M.en.toLowerCase()+" jazz, relaxing jazz";
+  $("ytDesc").textContent=
+`${M.ko}, ${P.ko}에 잔잔하게 흐르는 ${S.ko} ${dur} 플레이리스트입니다.
+커피 한 잔, 책 한 권, 혹은 일하는 동안 배경으로 틀어 두세요.
+A ${dur.replace("시간"," hour")} ${S.name} playlist for ${M.en.toLowerCase()} ${P.en.toLowerCase()} moments.
+
+━━━━━━━━━━━━━━
+🎵 Tracklist
+${stamps||EMPTY_TRACKS}
+━━━━━━━━━━━━━━
+
+☕ ${ch}
+요일마다 날씨와 시간에 맞는 카페 재즈를 올립니다. 구독해 두시면 새 플레이리스트를 받아 보실 수 있어요.
+
+🎧 음악 안내
+• 이 채널의 음악은 AI 음악 도구(Suno 유료 플랜)로 제작한 뒤 직접 곡 선정, 순서 구성, 편집, 마스터링을 거친 창작물입니다.
+• 영상 배경 이미지는 AI 이미지 도구로 직접 제작했습니다.
+• 개인 감상은 자유롭습니다. 매장·영상 사용 문의는 채널 정보의 이메일로 연락 주세요.
+(실제 사용 도구와 플랜에 맞게 고쳐 쓰세요)
+
+${tags.join(" ")}`;
+}
+
+
+const EMPTY_TRACKS="(보관함에서 영상용으로 선택한 곡이 아직 없어요)";
+// ---------- helpers ----------
+const h=t=>String(t??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const addDays=(s,n)=>{const d=new Date(s+"T00:00:00");d.setDate(d.getDate()+n);return d};
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),1600)}
+function copy(text,el){
+  navigator.clipboard.writeText(text).then(()=>toast("복사했어요")).catch(()=>{
+    if(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}
+    toast("자동 복사가 막혀 있어요. 선택된 글을 직접 복사해 주세요");});
+}
+
+// ---------- storage: private cloud rows when available, otherwise this browser ----------
+const LKEY="slowcup-items";
+const Store={mode:"loading",items:new Map(),col:null,subs:[],
+  on(f){this.subs.push(f)},emit(){this.subs.forEach(f=>f())},
+  all(kind){return[...this.items.values()].filter(x=>x.kind===kind)},
+  get(id){return this.items.get(id)},
+  loadLocal(){try{const a=JSON.parse(localStorage.getItem(LKEY)||"[]");this.items=new Map(a.map(x=>[x.id,x]))}catch(e){this.items=new Map()}},
+  saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify([...this.items.values()]))}catch(e){toast("이 브라우저에 저장하지 못했어요")}},
+  async put(item){
+    if(this.mode==="db"){const {id,...body}=item;try{await this.col.doc(id).set(body)}catch(e){toast("저장하지 못했어요. 잠시 뒤 다시 눌러 주세요")}}
+    else{this.items.set(item.id,item);this.saveLocal();this.emit()}
+  },
+  async del(id){
+    if(this.mode==="db"){try{await this.col.doc(id).delete()}catch(e){toast("삭제하지 못했어요")}}
+    else{this.items.delete(id);this.saveLocal();this.emit()}
+  }
+};
+function setSync(){
+  $("sync").textContent=Store.mode==="db"?"내 계정에 저장 중":Store.mode==="local"?"이 기기에만 저장":"불러오는 중";
+}
+async function initStore(){
+  let db=null,user=null,id=null;
+  try{
+    if(window.claude&&window.claude.use){
+      [db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")]);
+      if(db&&user)id=await user.id();
+    }
+  }catch(e){}
+  if(db&&id){
+    Store.mode="db";Store.col=db.collection("data/users/"+id);setSync();
+    const timer=setTimeout(()=>{if(!Store.loaded)$("sync").textContent="저장소 응답이 늦어요"},10000);
+    Store.col.onSnapshot(snap=>{clearTimeout(timer);Store.loaded=true;Store.items=new Map(snap.docs.map(d=>[d.id,{id:d.id,...d.data()}]));setSync();Store.emit()},
+      ()=>{clearTimeout(timer);$("sync").textContent="저장소에 연결하지 못했어요"});
+  }else{Store.mode="local";Store.loadLocal();setSync();Store.emit()}
+}
+
+// ---------- navigation ----------
+const VIEWS=["v-create","v-yt","v-lib","v-log"];
+function go(v){
+  VIEWS.forEach(x=>$(x).hidden=x!==v);
+  $("settingsWrap").hidden=!["v-create","v-yt"].includes(v);
+  document.querySelectorAll(".tabbar button").forEach(b=>{if(b.dataset.v===v)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  try{localStorage.setItem("slowcup-view",v)}catch(e){}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tabbar button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.v)));
+
+// ---------- songs → library ----------
+function songItem(s){return{id:"s_"+uid(),kind:"song",title:s.title,titleKo:s.titleKo,styleText:s.styleText,exclude:s.exclude,lyrics:s.lyrics,
+  bpm:s.bpm,key:s.key,style:s.style,vocal:s.vocal,mood:s.mood,place:s.place,status:"prompt",paid:false,created:new Date().toISOString()}}
+$("saveOne").onclick=async()=>{await Store.put(songItem(one));toast("보관함에 저장했어요")};
+
+let libFilter="all";
+$("libFilter").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;libFilter=b.dataset.f;
+  $("libFilter").querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));renderLib()});
+const STATUS={prompt:"프롬프트만",made:"Suno에서 생성함",picked:"영상용으로 선택"};
+function renderLib(){
+  const songs=Store.all("song").sort((a,b)=>(b.created||"").localeCompare(a.created||""));
+  const made=songs.filter(s=>s.status!=="prompt").length,picked=songs.filter(s=>s.status==="picked").length,paid=songs.filter(s=>s.paid).length;
+  $("libStats").innerHTML=`<div class="stat"><b>${songs.length}</b><span>저장한 곡</span></div><div class="stat"><b>${picked}</b><span>영상용 선택</span></div><div class="stat"><b>${paid}/${made}</b><span>유료 플랜 확인</span></div>`;
+  const shown=songs.filter(s=>libFilter==="all"||s.status===libFilter);
+  if(Store.mode==="loading"){$("libList").innerHTML=`<div class="empty">보관함을 불러오는 중이에요</div>`;return}
+  if(!shown.length){$("libList").innerHTML=`<div class="empty">${songs.length?"이 조건에 맞는 곡이 없어요":"아직 저장한 곡이 없어요.<br>만들기 탭에서 <b>보관함에 저장</b>을 누르거나, 플레이리스트 탭에서 20곡을 한 번에 저장해 보세요."}</div>`;return}
+  $("libList").innerHTML=shown.map(s=>`<div class="card" data-id="${h(s.id)}">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div style="min-width:0"><h4>${h(s.title)}</h4><div class="meta">${h(s.titleKo)} · ${h(STYLES[s.style]?.ko||s.style)} · ${h(s.bpm)} BPM · ${h(s.key)} · ${h(VOCAL_KO[s.vocal]||"")}</div></div>
+      ${s.status==="picked"?'<span class="pill ok">영상용</span>':s.status==="made"?'<span class="pill">생성함</span>':'<span class="pill v">프롬프트</span>'}
+    </div>
+    <div class="row">
+      <select data-act="status" aria-label="진행 상태" style="width:auto">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${s.status===k?" selected":""}>${v}</option>`).join("")}</select>
+      <label class="check"><input type="checkbox" data-act="paid"${s.paid?" checked":""}> 유료 플랜에서 생성</label>
+    </div>
+    <details><summary>프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
+    <div class="row"><button class="btn ghost small" data-act="copy">복사</button><button class="btn danger small" data-act="del">삭제</button></div>
+  </div>`).join("");
+}
+$("libList").addEventListener("change",async e=>{const c=e.target.closest(".card");if(!c)return;const s=Store.get(c.dataset.id);if(!s)return;
+  const act=e.target.dataset.act;const next={...s};if(act==="status")next.status=e.target.value;if(act==="paid")next.paid=e.target.checked;await Store.put(next)});
+$("libList").addEventListener("click",async e=>{const b=e.target.closest("button[data-act]");if(!b)return;const c=b.closest(".card");const s=Store.get(c.dataset.id);if(!s)return;
+  if(b.dataset.act==="copy")copy(songText(s));
+  if(b.dataset.act==="del"){if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="한 번 더 누르면 삭제";setTimeout(()=>{b.classList.remove("armed");b.textContent="삭제"},3000);return}await Store.del(s.id);toast("삭제했어요")}});
+$("importBtn").onclick=async()=>{
+  let data;try{data=JSON.parse($("importText").value.trim())}catch(e){$("importMsg").textContent="형식이 맞지 않아요. 플레이리스트 앱에서 복사한 내용을 그대로 붙여 넣어 주세요.";return}
+  const songs=data&&data.slowcup===1&&Array.isArray(data.songs)?data.songs:null;
+  if(!songs||!songs.length){$("importMsg").textContent="가져올 곡이 없어요.";return}
+  $("importBtn").disabled=true;const base=Date.now();
+  for(let i=0;i<songs.length;i++){const s=songs[i];if(!s||typeof s.title!=="string")continue;
+    const it=songItem({title:s.title,titleKo:String(s.titleKo||""),styleText:String(s.styleText||""),exclude:String(s.exclude||""),lyrics:String(s.lyrics||""),bpm:Number(s.bpm)||"",key:String(s.key||""),style:STYLES[s.style]?s.style:"bossa",vocal:VOCAL_KO[s.vocal]?s.vocal:"inst",mood:s.mood,place:s.place});
+    it.created=new Date(base+i).toISOString();await Store.put(it)}
+  $("importBtn").disabled=false;$("importText").value="";$("importMsg").textContent=songs.length+"곡을 보관함에 넣었어요.";toast("가져왔어요")};
+$("backup").onclick=()=>copy(JSON.stringify([...Store.items.values()],null,1));
+
+// ---------- 30-day plan ----------
+const TOPICS=[
+ {mood:"rain",place:"cafe",style:"bossa"},{mood:"night",place:"home",style:"trio"},{mood:"sunny",place:"cafe",style:"swing"},
+ {mood:"evening",place:"shop",style:"lounge"},{mood:"rain",place:"work",style:"jazzhop"},{mood:"winter",place:"cafe",style:"trio"},
+ {mood:"sunny",place:"bakery",style:"bossa"},{mood:"rain",place:"bookstore",style:"trio"},{mood:"night",place:"work",style:"jazzhop"},
+ {mood:"winter",place:"home",style:"ballad"},{mood:"evening",place:"cafe",style:"bossa"},{mood:"rain",place:"cafe",style:"bossa",long:true}];
+const DAYTASK={1:"Suno로 곡 만들기 (프롬프트 20개 × 2번 생성)",2:"곡 고르기 · Audacity로 다듬기",3:"곡 만들기 · 쇼츠 2개 만들기",4:"영상 편집 · 썸네일",5:"다음 영상 곡 고르기 · 성과 기록",6:"영상 편집 마무리 · 다음 주 주제 정하기",0:"쉬는 날 · 주간 지표 확인"};
+const UPDAYS=[2,4,6];
+function planDoc(){return Store.get("plan")||{id:"plan",kind:"plan",start:"",done:{}}}
+function renderPlan(){
+  const p=planDoc();const start=p.start||todayStr();$("planStart").value=start;
+  let up=0,doneCount=0;const rows=[];const t=todayStr();
+  for(let i=0;i<30;i++){
+    const d=addDays(start,i),wd=d.getDay(),isUp=UPDAYS.includes(wd);let topic=null;
+    if(isUp&&up<12){topic=TOPICS[up];up++}
+    const done=!!(p.done||{})[i];if(done)doneCount++;
+    const tp=topic?`${MOODS[topic.mood].ko} · ${PLACES[topic.place].ko} · ${STYLES[topic.style].ko}${topic.long?" (2시간)":""}`:"";
+    rows.push(`<div class="day${topic?" up":""}${done?" done":""}${ymd(d)===t?" today":""}">
+      <div class="d"><b>${d.getMonth()+1}/${d.getDate()}</b>${"일월화수목금토"[wd]}요일</div>
+      <div style="min-width:0"><div class="t">${topic?`<b>업로드 ${up}편 (19시)</b> — ${tp}<br>`:""}${DAYTASK[wd]}</div>
+      ${topic?`<button class="btn ghost small" style="margin-top:6px" data-topic="${up-1}">이 주제로 만들기</button>`:""}</div>
+      <input type="checkbox" data-day="${i}" aria-label="${d.getMonth()+1}월 ${d.getDate()}일 완료"${done?" checked":""}>
+    </div>`);
+  }
+  $("planList").innerHTML=rows.join("");
+  $("planProgress").textContent=`30일 중 ${doneCount}일 완료 · 업로드 ${up}편 계획`;
+}
+$("planStart").addEventListener("change",async()=>{const p=planDoc();await Store.put({...p,start:$("planStart").value,done:{}})});
+$("planList").addEventListener("change",async e=>{const c=e.target.closest("[data-day]");if(!c)return;const p=planDoc();
+  await Store.put({...p,start:p.start||$("planStart").value,done:{...(p.done||{}),[c.dataset.day]:c.checked}})});
+$("planList").addEventListener("click",e=>{const b=e.target.closest("[data-topic]");if(!b)return;const tp=TOPICS[+b.dataset.topic];
+  $("mood").value=tp.mood;$("place").value=tp.place;$("style").value=tp.style;$("vocal").value="inst";
+  save();renderOne();renderYT();go("v-create");toast("설정을 바꿨어요. 플레이리스트 앱에서도 같은 설정으로 "+(tp.long?"40":"20")+"곡을 만드세요")});
+
+// ---------- performance log ----------
+$("lgDate").value=todayStr();
+$("logForm").addEventListener("submit",async e=>{e.preventDefault();
+  const n=id=>$(id).value===""?null:Number($(id).value);
+  await Store.put({id:"v_"+uid(),kind:"video",title:$("lgTitle").value.trim(),date:$("lgDate").value,views:n("lgViews"),ctr:n("lgCtr"),avd:n("lgAvd"),subs:n("lgSubs"),created:new Date().toISOString()});
+  ["lgTitle","lgViews","lgCtr","lgAvd","lgSubs"].forEach(id=>$(id).value="");toast("기록했어요")});
+function renderLog(){
+  const v=Store.all("video").sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const avg=k=>{const a=v.map(x=>x[k]).filter(x=>x!=null);return a.length?a.reduce((s,x)=>s+x,0)/a.length:null};
+  const tv=v.reduce((s,x)=>s+(x.views||0),0),ctr=avg("ctr"),avd=avg("avd");
+  $("logStats").innerHTML=`<div class="stat"><b>${tv.toLocaleString()}</b><span>총 조회수</span></div><div class="stat"><b>${ctr==null?"–":ctr.toFixed(1)+"%"}</b><span>평균 클릭률${ctr!=null&&ctr<2?" · 썸네일 점검":""}</span></div><div class="stat"><b>${avd==null?"–":avd.toFixed(1)+"분"}</b><span>평균 시청</span></div>`;
+  const best=v.length?Math.max(...v.map(x=>x.views||0)):0;
+  $("logBody").innerHTML=v.length?v.map(x=>`<tr><td style="min-width:180px">${h(x.title)}${best&&x.views===best?' <span class="pill ok">최고</span>':""}</td><td>${h(x.date||"")}</td><td>${x.views==null?"–":x.views.toLocaleString()}</td><td>${x.ctr==null?"–":x.ctr+"%"}</td><td>${x.avd==null?"–":x.avd+"분"}</td><td>${x.subs==null?"–":x.subs}</td><td><button class="btn danger small" data-del="${h(x.id)}">삭제</button></td></tr>`).join("")
+    :`<tr><td colspan="7" class="meta" style="text-align:center;padding:18px">첫 영상을 올리고 7일 뒤 숫자를 적어 보세요.</td></tr>`;
+}
+$("logBody").addEventListener("click",async e=>{const b=e.target.closest("[data-del]");if(!b)return;
+  if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="확인";setTimeout(()=>{b.classList.remove("armed");b.textContent="삭제"},3000);return}
+  await Store.del(b.dataset.del);toast("삭제했어요")});
+
+// ---------- AI (Claude) features, shown only when available ----------
+let sample=null;
+async function initAI(){
+  try{if(window.claude&&window.claude.use)sample=await window.claude.use("sample")}catch(e){}
+  if(!sample)return;
+  $("aiLyrics").hidden=false;$("aiNext").hidden=false;
+}
+$("aiLyrics").onclick=async()=>{
+  if(!sample)return;const c=cfg();
+  if(c.vocal==="inst"){toast("보컬을 여성·남성 보컬로 바꾸면 가사를 써 드려요");return}
+  const langTxt={ko:"Korean",en:"English",mix:"Korean verses with an English chorus"}[c.lang];
+  const b=$("aiLyrics");b.disabled=true;$("aiNote").textContent="Claude가 가사를 쓰는 중이에요";
+  const prompt=`Write ORIGINAL lyrics for a relaxing café jazz song titled "${one.title}".
+Mood: ${MOODS[c.mood].en} (${MOODS[c.mood].kw}). Place: ${PLACES[c.place].en}. Style: ${STYLES[c.style].name}, ${one.bpm} BPM.
+Vocal: ${VOCAL[c.vocal]}. Language: ${langTxt}.
+Rules:
+- Use Suno section tags on their own lines: [Intro: ...], [Verse 1], [Chorus], [Instrumental Break: ${STYLES[c.style].lead}], [Verse 2], [Chorus], [Bridge], [Outro: gentle fade out], [End].
+- 4 short lines per verse, 4 lines per chorus, 2 lines bridge. Simple, warm, concrete everyday images (cups, windows, weather, streets). Easy to sing, gentle repetition in the chorus.
+- Do not quote or imitate any existing song, and never mention real artists, brands or song titles.
+- Output only the lyrics with tags. No title line, no explanation.`;
+  try{
+    const r=await sample(prompt,{onText:({text})=>{$("oneLyr").textContent=text},cache:false});
+    one.lyrics=r.text.trim();$("oneLyr").textContent=one.lyrics;$("aiNote").textContent="Claude가 쓴 가사예요. 마음에 들게 고친 뒤 쓰세요."+(r.truncated?" (길이 제한으로 끝이 잘렸어요)":"");
+  }catch(e){
+    $("oneLyr").textContent=one.lyrics;
+    $("aiNote").textContent=e&&e.code==="not_granted"?"AI 사용이 허용되지 않았어요. 기본 가사를 그대로 쓰세요.":e&&e.code==="rate_limited"?"잠시 쉬었다가 다시 눌러 주세요.":"가사를 받지 못했어요. 잠시 뒤 다시 눌러 주세요.";
+    if(e&&e.code==="not_granted"){$("aiLyrics").hidden=true;$("aiNext").hidden=true}
+  }
+  b.disabled=false;
+};
+$("aiNext").onclick=async()=>{
+  if(!sample)return;const v=Store.all("video");
+  if(!v.length){toast("성과를 한 편 이상 기록하면 추천해 드려요");return}
+  const b=$("aiNext");b.disabled=true;const out=$("aiNextOut");out.hidden=false;out.textContent="분석하는 중이에요";
+  const rows=v.map(x=>`- ${x.title} | ${x.date} | views ${x.views??"?"} | CTR ${x.ctr??"?"}% | avg view ${x.avd??"?"} min | subs ${x.subs??"?"}`).join("\n");
+  const prompt=`You are a YouTube strategist for a Korean café-jazz playlist channel named "${$("channel").value}". Answer in Korean, plainly, for a beginner.
+Video results (first 7 days):
+${rows}
+Possible moods: ${Object.values(MOODS).map(m=>m.ko).join(", ")}. Places: ${Object.values(PLACES).map(p=>p.ko).join(", ")}. Styles: ${Object.values(STYLES).map(s=>s.ko).join(", ")}.
+Today is ${todayStr()} (consider the season).
+Give: 1) what the best videos have in common (2-3 lines, cite the numbers), 2) three next video ideas, each with a natural search-style Korean title (no clickbait) and the mood/place/style to choose, 3) one thing to change if CTR is under 2% or average view is low. Do not promise results. Keep it under 18 lines.`;
+  try{const r=await sample(prompt,{onText:({text})=>{out.textContent=text},cache:false});out.textContent=r.text.trim()}
+  catch(e){out.textContent=e&&e.code==="rate_limited"?"잠시 쉬었다가 다시 눌러 주세요.":"추천을 받지 못했어요. 잠시 뒤 다시 눌러 주세요."}
+  b.disabled=false;
+};
+
+
+// ---------- thumbnail maker ----------
+const SCENES={
+  rain:{sky:["#6d8296","#34465a"],glow:"rgba(255,214,150,.35)",fx:"rain"},
+  sunny:{sky:["#a9d6ec","#f4e6be"],glow:"rgba(255,236,180,.55)",fx:"sun"},
+  evening:{sky:["#f2a865","#6e4a80"],glow:"rgba(255,180,110,.5)",fx:"dusk"},
+  night:{sky:["#1d2745","#0b1122"],glow:"rgba(255,200,120,.45)",fx:"city"},
+  autumn:{sky:["#e9b673","#9c5c35"],glow:"rgba(255,200,130,.45)",fx:"leaves"},
+  winter:{sky:["#c3cfdc","#73859b"],glow:"rgba(255,220,170,.4)",fx:"snow"},
+  spring:{sky:["#d4ead2","#f1d3dd"],glow:"rgba(255,236,200,.5)",fx:"petals"}
+};
+const TH_COLORS={light:"#f6efe1",white:"#ffffff",warm:"#ffe0a3"};
+const LAYOUTS=[{id:"left",ko:"왼쪽 큰 글씨"},{id:"center",ko:"가운데"},{id:"band",ko:"아래 띠"}];
+let thLayout="left",thSeed=1,thImg=null,thEdited=false;
+function srand(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function sceneKey(){const v=$("thBg").value;return v==="auto"?cfg().mood:v}
+function drawScene(x,W,H){
+  const S=SCENES[sceneKey()]||SCENES.rain,r=srand(thSeed*7919+W);
+  if(thImg){ // user image, cover-fit
+    const k=Math.max(W/thImg.width,H/thImg.height),w=thImg.width*k,h=thImg.height*k;
+    x.drawImage(thImg,(W-w)/2,(H-h)/2,w,h);
+  }else{
+    // outside view
+    const g=x.createLinearGradient(0,0,0,H*.75);g.addColorStop(0,S.sky[0]);g.addColorStop(1,S.sky[1]);x.fillStyle=g;x.fillRect(0,0,W,H);
+    const u=W/1280;
+    if(S.fx==="sun"||S.fx==="dusk"){const sx=S.fx==="sun"?W*.78:W*.62,sy=S.fx==="sun"?H*.18:H*.55;const sg=x.createRadialGradient(sx,sy,0,sx,sy,W*.4);sg.addColorStop(0,S.fx==="sun"?"rgba(255,250,225,.95)":"rgba(255,215,150,.9)");sg.addColorStop(1,"rgba(255,240,200,0)");x.fillStyle=sg;x.fillRect(0,0,W,H)}
+    // far buildings
+    x.fillStyle=S.fx==="city"?"rgba(10,14,30,.9)":"rgba(40,50,60,.28)";
+    let bx=0;while(bx<W){const bw=(60+r()*120)*u,bh=(H*.18)+r()*H*.3;x.fillRect(bx,H*.62-bh,bw,bh+H*.4);bx+=bw+4*u}
+    if(S.fx==="city"){for(let i=0;i<140;i++){x.fillStyle=`rgba(255,${190+r()*50|0},${110+r()*60|0},${.25+r()*.6})`;x.fillRect(r()*W,H*.2+r()*H*.45,3*u,4*u)}
+      for(let i=0;i<40;i++){x.fillStyle=`rgba(255,255,255,${r()*.7})`;x.fillRect(r()*W,r()*H*.25,2*u,2*u)}}
+    // bokeh
+    for(let i=0;i<18;i++){const cx=r()*W,cy=H*.3+r()*H*.4,cr=(10+r()*34)*u;const bg=x.createRadialGradient(cx,cy,0,cx,cy,cr);bg.addColorStop(0,S.fx==="city"||S.fx==="rain"?"rgba(255,210,140,.45)":"rgba(255,255,240,.3)");bg.addColorStop(1,"rgba(255,255,255,0)");x.fillStyle=bg;x.beginPath();x.arc(cx,cy,cr,0,7);x.fill()}
+    if(S.fx==="rain"){x.strokeStyle="rgba(220,235,250,.35)";x.lineWidth=1.4*u;for(let i=0;i<260;i++){const a=r()*W,b=r()*H*.8,l=(18+r()*30)*u;x.beginPath();x.moveTo(a,b);x.lineTo(a-4*u,b+l);x.stroke()}
+      for(let i=0;i<90;i++){const a=r()*W,b=r()*H*.8,d=(2+r()*6)*u;x.fillStyle="rgba(230,240,255,.4)";x.beginPath();x.ellipse(a,b,d*.7,d,0,0,7);x.fill();x.fillStyle="rgba(255,255,255,.55)";x.beginPath();x.arc(a-d*.2,b-d*.3,d*.25,0,7);x.fill()}}
+    if(S.fx==="snow"){for(let i=0;i<220;i++){x.fillStyle=`rgba(255,255,255,${.5+r()*.5})`;x.beginPath();x.arc(r()*W,r()*H*.85,(1.5+r()*4)*u,0,7);x.fill()}}
+    if(S.fx==="leaves"||S.fx==="petals"){for(let i=0;i<46;i++){x.save();x.translate(r()*W,r()*H*.8);x.rotate(r()*6.3);x.fillStyle=S.fx==="leaves"?`hsla(${20+r()*25},75%,${40+r()*15}%,.85)`:`hsla(${340+r()*15},70%,${85+r()*8}%,.9)`;x.beginPath();x.ellipse(0,0,(6+r()*7)*u,(3+r()*3)*u,0,0,7);x.fill();x.restore()}}
+    if(S.fx==="sun"){x.save();x.globalCompositeOperation="lighter";for(let i=0;i<5;i++){x.fillStyle="rgba(255,240,200,.05)";x.beginPath();x.moveTo(W*(.55+i*.08),0);x.lineTo(W*(.62+i*.08),0);x.lineTo(W*(.3+i*.1),H);x.lineTo(W*(.2+i*.1),H);x.fill()}x.restore()}
+    // window frame
+    const fr="#2b231e";x.fillStyle=fr;
+    x.fillRect(0,0,W,28*u);x.fillRect(0,0,30*u,H);x.fillRect(W-30*u,0,30*u,H);x.fillRect(W*.5-9*u,0,18*u,H*.74);x.fillRect(0,H*.36-8*u,W,16*u);
+    // table
+    const tg=x.createLinearGradient(0,H*.72,0,H);tg.addColorStop(0,"#5a3d2b");tg.addColorStop(1,"#2e1f16");x.fillStyle=tg;x.fillRect(0,H*.72,W,H*.28);
+    x.fillStyle="rgba(255,220,170,.12)";x.fillRect(0,H*.72,W,3*u);
+    // cup
+    const cx=W*.8,cy=H*.74,cw=150*u,ch=120*u;
+    x.fillStyle="rgba(0,0,0,.35)";x.beginPath();x.ellipse(cx,cy+ch*.12,cw*.95,22*u,0,0,7);x.fill();
+    x.fillStyle="#efe6d6";x.beginPath();x.ellipse(cx,cy+ch*.1,cw*.9,18*u,0,0,7);x.fill(); // saucer
+    x.fillStyle="#f6efe3";x.beginPath();x.moveTo(cx-cw/2,cy-ch);x.lineTo(cx+cw/2,cy-ch);x.quadraticCurveTo(cx+cw/2,cy,cx,cy);x.quadraticCurveTo(cx-cw/2,cy,cx-cw/2,cy-ch);x.fill();
+    x.strokeStyle="#f6efe3";x.lineWidth=14*u;x.beginPath();x.ellipse(cx+cw/2+12*u,cy-ch*.55,24*u,30*u,0,-1.4,1.4);x.stroke();
+    x.fillStyle="#6b4227";x.beginPath();x.ellipse(cx,cy-ch,cw/2-4*u,12*u,0,0,7);x.fill();
+    x.strokeStyle="rgba(255,255,255,.5)";x.lineWidth=4*u;x.lineCap="round";
+    for(let i=-1;i<=1;i++){x.beginPath();const sx=cx+i*30*u;x.moveTo(sx,cy-ch-20*u);x.bezierCurveTo(sx+24*u,cy-ch-60*u,sx-24*u,cy-ch-90*u,sx+8*u,cy-ch-130*u);x.stroke()}
+  }
+  // warm lamp glow + dim
+  const lg=x.createRadialGradient(W*.1,H*.05,0,W*.1,H*.05,W*.7);lg.addColorStop(0,S.glow);lg.addColorStop(1,"rgba(0,0,0,0)");x.fillStyle=lg;x.fillRect(0,0,W,H);
+  x.fillStyle=`rgba(10,12,14,${$("thDim").value/100})`;x.fillRect(0,0,W,H);
+}
+function drawText(x,W,H,layout){
+  const u=W/1280,col=TH_COLORS[$("thColor").value],l1=$("thL1").value,l2=$("thL2").value,sub=$("thSub").value,brand=$("channel").value.trim()||"Slow Cup Jazz";
+  const disp='"Gowun Batang", "Nanum Myeongjo", Georgia, serif',bodyF='"IBM Plex Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif';
+  const fit=(t,max,size)=>{x.font=`700 ${size}px ${disp}`;while(x.measureText(t).width>max&&size>30){size-=4;x.font=`700 ${size}px ${disp}`}return size};
+  x.textBaseline="alphabetic";x.shadowColor="rgba(0,0,0,.55)";x.shadowBlur=18*u;x.shadowOffsetY=3*u;
+  // brand mark, same spot on every thumbnail
+  x.font=`600 ${26*u}px ${bodyF}`;x.fillStyle=col;x.textAlign="left";x.fillText("☕ "+brand,60*u,82*u);
+  if(layout==="left"){
+    const s1=fit(l1,W*.58,150*u);x.font=`700 ${s1}px ${disp}`;x.fillStyle=col;x.fillText(l1,60*u,H*.5);
+    const s2=fit(l2,W*.58,150*u);x.font=`700 ${s2}px ${disp}`;x.fillText(l2,60*u,H*.5+s2*1.1);
+    x.font=`500 ${36*u}px ${bodyF}`;x.fillText(sub,64*u,H*.5+s2*1.1+70*u);
+  }else if(layout==="center"){
+    x.shadowBlur=0;x.fillStyle="rgba(15,15,18,.42)";x.fillRect(0,H*.28,W,H*.44);x.shadowBlur=18*u;
+    x.textAlign="center";x.fillStyle=col;const s=fit(l1+" "+l2,W*.86,140*u);x.font=`700 ${s}px ${disp}`;x.fillText((l1+" "+l2).trim(),W/2,H*.52);
+    x.font=`500 ${38*u}px ${bodyF}`;x.fillText(sub,W/2,H*.52+76*u);
+  }else{
+    x.shadowBlur=0;const bh=H*.27;x.fillStyle="rgba(18,16,14,.78)";x.fillRect(0,H-bh,W,bh);x.shadowBlur=10*u;
+    x.textAlign="left";x.fillStyle=col;const t=(l1+" "+l2).trim();const s=fit(t,W*.66,104*u);x.font=`700 ${s}px ${disp}`;x.fillText(t,60*u,H-bh/2+s*.32);
+    x.textAlign="right";x.font=`600 ${34*u}px ${bodyF}`;x.fillText(sub.split("·")[0].trim(),W-60*u,H-bh/2-6*u);
+    x.font=`400 ${26*u}px ${bodyF}`;x.fillText((sub.split("·")[1]||"").trim(),W-60*u,H-bh/2+34*u);
+  }
+  x.shadowColor="transparent";x.textAlign="left";
+}
+function renderThumb(W,H,layout){const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");drawScene(x,W,H);drawText(x,W,H,layout);return c}
+function refillThumbText(){
+  const M=MOODS[cfg().mood],mins=list.length*(parseFloat($("avg").value)||3.2);
+  const dur=!list.length||mins<90?"1시간":Math.round(mins/60)+"시간";
+  $("thL1").value=M.ko;$("thL2").value="카페 재즈";$("thSub").value=`${dur} · ${M.en} Café Jazz`;thEdited=false;
+}
+let thTimer=null;
+function drawThumbs(){clearTimeout(thTimer);thTimer=setTimeout(()=>{
+  $("thVariants").innerHTML="";
+  LAYOUTS.forEach(L=>{const b=document.createElement("button");b.type="button";b.setAttribute("aria-pressed",L.id===thLayout);b.dataset.layout=L.id;
+    b.appendChild(renderThumb(384,216,L.id));b.appendChild(document.createTextNode(L.ko));$("thVariants").appendChild(b)});
+  $("thBig").src=renderThumb(1280,720,thLayout).toDataURL("image/png");
+},60)}
+$("thVariants").addEventListener("click",e=>{const b=e.target.closest("[data-layout]");if(!b)return;thLayout=b.dataset.layout;drawThumbs()});
+["thBg","thColor","thDim"].forEach(id=>$(id).addEventListener("input",drawThumbs));
+["thL1","thL2","thSub"].forEach(id=>$(id).addEventListener("input",()=>{thEdited=true;drawThumbs()}));
+$("thRefill").onclick=()=>{refillThumbText();drawThumbs()};
+$("thRedraw").onclick=()=>{thSeed++;drawThumbs()};
+$("thFile").addEventListener("change",()=>{const f=$("thFile").files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{const im=new Image();im.onload=()=>{thImg=im;$("thClearImg").hidden=false;drawThumbs()};im.onerror=()=>toast("이 이미지는 열 수 없어요");im.src=rd.result};rd.readAsDataURL(f)});
+$("thClearImg").onclick=()=>{thImg=null;$("thFile").value="";$("thClearImg").hidden=true;drawThumbs()};
+let downloads=null;
+$("thSave").onclick=async()=>{
+  const c=renderThumb(1280,720,thLayout);
+  if(!downloads){try{if(window.claude&&window.claude.use)downloads=await window.claude.use("downloads")}catch(e){}}
+  if(!downloads){$("thMsg").textContent="여기서는 바로 저장할 수 없어요. 아래 큰 이미지를 길게 누르거나(휴대폰) 오른쪽 클릭해서(PC) 저장하세요.";return}
+  c.toBlob(async blob=>{
+    const name=`slowcup-${cfg().mood}-${thLayout}.png`;
+    try{await downloads.save({filename:name,data:blob});$("thMsg").textContent=name+" 저장을 요청했어요."}
+    catch(e){$("thMsg").textContent=e&&e.code==="declined"?"저장을 취소했어요.":"저장하지 못했어요. 큰 이미지를 길게 누르거나 오른쪽 클릭해서 저장하세요."}
+  },"image/png");
+};
+const thFontsReady=(document.fonts?Promise.all([document.fonts.load('700 100px "Gowun Batang"'),document.fonts.load('500 30px "IBM Plex Sans KR"')]):Promise.resolve()).catch(()=>{});
+
+// ---------- wiring ----------
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-copy]");if(b){copy($(b.dataset.copy).textContent,$(b.dataset.copy));return}
+  const s=e.target.closest("[data-song]");if(s){copy(songText(list[+s.dataset.song]));return}
+});
+$("reroll").onclick=()=>{renderOne();$("aiNote").textContent=""};
+$("copyOne").onclick=()=>copy(songText(one),$("oneLyr"));
+["mood","place","style","vocal","lang"].forEach(id=>$(id).addEventListener("change",()=>{save();renderOne();renderYT();$("aiNote").textContent=""}));
+["channel","avg"].forEach(id=>$(id).addEventListener("change",()=>{save();syncTracks()}));
+
+function syncTracks(){list=Store.all("song").filter(s=>s.status==="picked").sort((a,b)=>(a.created||"").localeCompare(b.created||""));
+  $("ytSource").textContent=list.length?`영상용 곡 ${list.length}곡 · 약 ${Math.round(list.length*(parseFloat($("avg").value)||3.2))}분`:"영상용으로 선택한 곡이 없어요";renderYT()}
+Store.on(()=>{renderLib();renderPlan();renderLog();syncTracks()});
+renderOne();renderLib();renderPlan();renderLog();syncTracks();
+try{const v=localStorage.getItem("slowcup-view");if(VIEWS.includes(v))go(v)}catch(e){}
+initStore();initAI();
+const _renderYT=renderYT;renderYT=function(){_renderYT();if(!thEdited)refillThumbText();drawThumbs()};
+refillThumbText();drawThumbs();thFontsReady.then(drawThumbs);
+</script>
+
+</body>
+</html>
