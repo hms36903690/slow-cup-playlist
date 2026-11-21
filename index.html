@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211825";
+  var APP_VERSION = "202611211833";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -1460,7 +1460,7 @@ function renderBatchList(){
   $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. <span class="ttl">${h(s.title)}</span> <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
     ${lyrBlocks(s,"batch:"+i)}
     <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
-    ${sunoBarHTML("batch:"+i,s)}<div class="row" style="margin-top:8px"><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
+    ${sunoBarHTML("batch:"+i,s)}</details>`).join("");
 }
 function makeBatch(){
   const c=cfg(),n=Math.max(2,Math.min(40,parseInt($("batchN").value)||13));$("batchN").value=n;
