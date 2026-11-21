@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611212008";
+  var APP_VERSION = "202611212013";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -257,6 +257,13 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .folder-tracks .song-inline{padding:10px;background:var(--surface);border-top:1px solid var(--line)}
 .folder-tracks .song-inline .card{border-color:var(--accent)}
 .song-details>summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--accent);padding:6px 0}
+.quick{max-width:760px;margin:8px auto 0;display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.quick::-webkit-scrollbar{display:none}
+.quick-lab{font-size:11.5px;color:var(--muted);font-weight:600;flex:none}
+.quick a{flex:none;display:flex;flex-direction:column;align-items:center;line-height:1.15;font-size:13px;font-weight:700;color:var(--on-cta);background:var(--cta);text-decoration:none;border-radius:8px;padding:5px 10px}
+.quick a small{font-size:10px;font-weight:500;opacity:.9}
+.quick a:hover{filter:brightness(1.08)}
+.quick a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
 .undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
@@ -269,7 +276,14 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
   <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true" style="flex:none"><rect x="1" y="1" width="30" height="30" rx="8" fill="var(--accent)"/><path d="M9 14h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z" fill="none" stroke="var(--on-accent)" stroke-width="1.8"/><path d="M21 15.5h1.5a2.3 2.3 0 0 1 0 4.6H21" fill="none" stroke="var(--on-accent)" stroke-width="1.8"/><path d="M13 11c0-1.2 1.2-1.4 1.2-2.6M16.5 11c0-1.2 1.2-1.4 1.2-2.6" stroke="var(--on-accent)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
   <div class="brand">Slow Cup Jazz<small>카페 재즈 채널 운영 앱</small></div>
   <div class="sync" id="sync">불러오는 중</div>
-</div></header>
+</div>
+<nav class="quick" aria-label="바로가기">
+  <span class="quick-lab">바로가기</span>
+  <a href="https://suno.com/create" target="suno" rel="noopener">Suno<small>음악</small></a>
+  <a href="https://www.midjourney.com/imagine" target="midjourney" rel="noopener">Midjourney<small>이미지</small></a>
+  <a href="https://www.capcut.com/" target="capcut" rel="noopener">CapCut<small>영상 편집</small></a>
+  <a href="https://chatgpt.com/" target="chatgpt" rel="noopener">ChatGPT<small>글·아이디어</small></a>
+</nav></header>
 
 <main>
   <!-- shared settings -->
