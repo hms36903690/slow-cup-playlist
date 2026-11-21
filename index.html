@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611212031";
+  var APP_VERSION = "202611212040";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -257,7 +257,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .folder-tracks .song-inline{padding:10px;background:var(--surface);border-top:1px solid var(--line)}
 .folder-tracks .song-inline .card{border-color:var(--accent)}
 .song-details>summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--accent);padding:6px 0}
-.quick{max-width:760px;margin:8px auto 0;display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.quick{max-width:760px;margin:8px auto 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .quick::-webkit-scrollbar{display:none}
 .quick-lab{font-size:11.5px;color:var(--muted);font-weight:600;flex:none}
 .quick a{flex:none;display:flex;flex-direction:column;align-items:center;line-height:1.15;font-size:13px;font-weight:700;color:var(--on-cta);background:var(--cta);text-decoration:none;border-radius:8px;padding:5px 10px}
@@ -283,6 +283,8 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
   <a href="https://chatgpt.com/" target="chatgpt" rel="noopener">ChatGPT<small>글·아이디어</small></a>
   <a href="https://www.midjourney.com/imagine" target="midjourney" rel="noopener">Midjourney<small>이미지</small></a>
   <a href="https://www.capcut.com/" target="capcut" rel="noopener">CapCut<small>영상 편집</small></a>
+  <a href="https://www.miricanvas.com/" target="miricanvas" rel="noopener">미리캔버스<small>썸네일·디자인</small></a>
+  <a href="https://distrokid.com/dashboard/" target="distrokid" rel="noopener">DistroKid<small>음원 유통</small></a>
 </nav></header>
 
 <main>
