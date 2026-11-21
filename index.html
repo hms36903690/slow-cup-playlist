@@ -4,6 +4,44 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1e5b55">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Slow Cup">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<script>
+// Install support: offline cache + an "앱 설치" button in the top bar.
+(function(){
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+  }
+  var deferred = null;
+  var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  function addButton(label, onClick){
+    var bar = document.querySelector(".appbar .in"); if (!bar || document.getElementById("installBtn")) return;
+    var b = document.createElement("button");
+    b.id = "installBtn"; b.type = "button"; b.className = "btn small"; b.textContent = label;
+    b.style.marginLeft = "8px"; b.style.flex = "none";
+    b.addEventListener("click", onClick); bar.appendChild(b);
+  }
+  function toastMsg(m){ var t = document.getElementById("toast"); if (t) { t.textContent = m; t.classList.add("on"); setTimeout(function(){ t.classList.remove("on"); }, 4000); } }
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault(); deferred = e;
+    addButton("앱 설치", function(){
+      deferred.prompt();
+      deferred.userChoice.then(function(c){ if (c.outcome === "accepted") { var b = document.getElementById("installBtn"); if (b) b.remove(); } deferred = null; });
+    });
+  });
+  window.addEventListener("appinstalled", function(){ var b = document.getElementById("installBtn"); if (b) b.remove(); toastMsg("설치했어요. 홈 화면이나 앱 목록에서 Slow Cup을 찾아 주세요."); });
+  if (isIOS && !standalone && location.protocol === "https:") {
+    document.addEventListener("DOMContentLoaded", function(){
+      addButton("앱 설치", function(){ toastMsg("Safari 아래쪽 공유 버튼 → '홈 화면에 추가'를 누르세요."); });
+    });
+  }
+})();
+</script>
 </head>
 <body>
 <title>Slow Cup Jazz</title>
