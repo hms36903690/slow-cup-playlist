@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211823";
+  var APP_VERSION = "202611211825";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -249,6 +249,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .folder .fname{font-family:var(--display);font-weight:700;font-size:16px;flex:1;min-width:0}
 .folder-acts{margin:10px 0}
 .folder .card{background:var(--bg)}
+#batchMake.armed{background:var(--bad);border-color:var(--bad);color:var(--surface)}
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
 .undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
@@ -1386,7 +1387,7 @@ async function applyLyrics(src,s,next){
   if(src.startsWith("lib:")){await Store.put({...s,...next});return}
   Object.assign(s,next);
   if(src==="one"){$("oneLyr").textContent=one.lyrics;updateRead()}
-  else{saveBatch();const d=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);const open=d&&d.open;renderBatchList();const d2=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);if(d2&&open)d2.open=true;syncTracks()}
+  else{saveBatch();if(s.libId){const L=Store.get(s.libId);if(L)Store.put({...L,...next})}const d=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);const open=d&&d.open;renderBatchList();const d2=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);if(d2&&open)d2.open=true;syncTracks()}
 }
 let undoTimer=null;
 function showUndo(){$("undoBar").hidden=false;clearTimeout(undoTimer);undoTimer=setTimeout(()=>{$("undoBar").hidden=true},6000)}
@@ -1450,8 +1451,10 @@ $("vocal").addEventListener("change",batchVocalLabel);batchVocalLabel();
 let batch=[];
 // Keep the last playlist on this device so it survives closing the app.
 const BKEY="slowcup-batch";
-function saveBatch(){try{localStorage.setItem(BKEY,JSON.stringify(batch))}catch(e){}}
-function loadBatch(){try{const a=JSON.parse(localStorage.getItem(BKEY)||"[]");if(Array.isArray(a))batch=a.filter(x=>x&&x.title&&x.style)}catch(e){batch=[]}}
+let batchSaved=false; // whether the current playlist has been saved to the library
+function saveBatch(){try{localStorage.setItem(BKEY,JSON.stringify(batch));localStorage.setItem(BKEY+"-saved",batchSaved?"1":"")}catch(e){}}
+function batchMakeLabel(){const b=$("batchMake");b.classList.remove("armed");b.textContent=batch.length?"새로 만들기":"한번에 만들기"}
+function loadBatch(){try{const a=JSON.parse(localStorage.getItem(BKEY)||"[]");if(Array.isArray(a))batch=a.filter(x=>x&&x.title&&x.style);batchSaved=localStorage.getItem(BKEY+"-saved")==="1"}catch(e){batch=[]}}
 let trackSrc="batch"; // which songs the upload tab uses: "batch" (last made) or "picked" (library)
 function renderBatchList(){
   $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. <span class="ttl">${h(s.title)}</span> <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
@@ -1477,18 +1480,28 @@ function makeBatch(){
   const mins=n*(parseFloat($("avg").value)||3.2);
   $("batchMeta").textContent=`${n}곡 · 약 ${Math.round(mins)}분`;
   renderBatchList();
-  $("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;trackSrc="batch";saveBatch();syncTracks();
-  toast(`${batch.length}곡을 만들었어요. 업로드 탭 ‘이번 영상의 곡’에 들어갔어요`);
+  $("batchCopy").disabled=false;$("batchSheet").disabled=false;trackSrc="batch";saveBatch();syncTracks();
 }
-$("batchMake").onclick=makeBatch;
+let armTimer=null;
+$("batchMake").onclick=()=>{const b=$("batchMake");
+  if(batch.length&&!batchSaved&&!b.classList.contains("armed")){b.classList.add("armed");b.textContent=`저장 안 한 ${batch.length}곡이 바뀌어요. 한 번 더 누르면 새로 만들어요`;
+    clearTimeout(armTimer);armTimer=setTimeout(batchMakeLabel,5000);return}
+  clearTimeout(armTimer);makeBatch();batchSaved=false;saveBatch();batchMakeLabel();batchSaveLabel();
+  saveBatchToLib().then(()=>toast(`${batch.length}곡을 만들어 보관함 새 폴더에 저장했어요. 업로드 탭에도 들어갔어요`))};
 $("batchSheet").onclick=()=>copy(["번호\t제목\t한글 제목\t스타일\tBPM\t키\t보컬\tStyle 프롬프트",...batch.map((s,i)=>[i+1,s.title,s.titleKo,STYLES[s.style].ko,s.bpm,s.key,VOCAL_KO[s.vocal],s.styleText].join("\t"))].join("\n"));
-$("batchSave").onclick=async()=>{const b=$("batchSave");b.disabled=true;const base=Date.now();
+// Save the current playlist into one new library folder (called automatically after making songs).
+async function saveBatchToLib(){
+  if(!batch.length)return;const base=Date.now();
   const f=batch[0]||{},d=new Date(),M=MOODS[f.mood]||{ko:""},P=PLACES[f.place]||{ko:""},S=STYLES[f.style]||{ko:""};
   const hh=String(d.getHours()).padStart(2,"0"),mm=String(d.getMinutes()).padStart(2,"0");
   const gid="g_"+uid(),gname=`${d.getMonth()+1}/${d.getDate()} ${hh}:${mm} ${M.ko} · ${P.ko} · ${S.ko} (${batch.length}곡)`;
   libOpen.add(gid);
-  for(let i=0;i<batch.length;i++){const it=songItem(batch[i]);it.created=new Date(base+i).toISOString();it.groupId=gid;it.groupName=gname;it.groupIdx=i;await Store.put(it)}
-  b.disabled=false;toast(`${batch.length}곡을 보관함의 한 폴더에 저장했어요`)};
+  for(let i=0;i<batch.length;i++){const it=songItem(batch[i]);it.created=new Date(base+i).toISOString();it.groupId=gid;it.groupName=gname;it.groupIdx=i;batch[i].libId=it.id;await Store.put(it)}
+  batchSaved=true;saveBatch();batchSaveLabel();
+}
+function batchSaveLabel(){const b=$("batchSave");if(!batch.length){b.disabled=true;b.textContent="모두 보관함에 저장";return}
+  b.disabled=batchSaved;b.textContent=batchSaved?"보관함에 저장됨 ✓":"모두 보관함에 저장"}
+$("batchSave").onclick=async()=>{if(batchSaved)return;$("batchSave").disabled=true;await saveBatchToLib();toast(`${batch.length}곡을 보관함의 한 폴더에 저장했어요`)};
 // Copy-all: every song with genre, exclude, English lyrics and Korean lyrics together.
 function fullSongText(s,i){
   const st=STYLES[s.style],p=lyrPair(s),inst=s.vocal==="inst"||s.vocal==="scat";
@@ -1638,7 +1651,7 @@ function syncTracks(){
 document.addEventListener("click",e=>{const c=e.target.closest("[data-tsrc]");if(!c)return;trackSrc=c.dataset.tsrc;syncTracks()});
 Store.on(()=>{renderLib();renderPlan();renderLog();syncTracks()});
 loadBatch();if(batch.length){renderBatchList();$("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;$("batchMeta").textContent=`${batch.length}곡 · 약 ${Math.round(batch.length*(parseFloat($("avg").value)||3.2))}분`}
-renderOne();renderLib();renderPlan();renderLog();syncTracks();
+renderOne();renderLib();renderPlan();renderLog();syncTracks();batchMakeLabel();batchSaveLabel();
 try{const v=localStorage.getItem("slowcup-view");if(VIEWS.includes(v))go(v)}catch(e){}
 initStore();initAI();
 const _renderOne=renderOne;renderOne=function(){_renderOne();updateRead()};updateRead();
