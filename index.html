@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211734";
+  var APP_VERSION = "202611211741";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -1366,7 +1366,16 @@ $("batchSheet").onclick=()=>copy(["번호\t제목\t한글 제목\t스타일\tBPM
 $("batchSave").onclick=async()=>{const b=$("batchSave");b.disabled=true;const base=Date.now();
   for(let i=0;i<batch.length;i++){const it=songItem(batch[i]);it.created=new Date(base+i).toISOString();await Store.put(it)}
   b.disabled=false;toast(batch.length+"곡을 보관함에 저장했어요")};
-$("batchCopy").onclick=()=>copy(batch.map((s,i)=>`${String(i+1).padStart(2,"0")}. `+songText(s)).join("\n\n────────\n\n"));
+// Copy-all: every song with genre, exclude, English lyrics and Korean lyrics together.
+function fullSongText(s,i){
+  const st=STYLES[s.style],p=lyrPair(s),inst=s.vocal==="inst"||s.vocal==="scat";
+  const parts=[`${String(i+1).padStart(2,"0")}. ${s.title} (${s.titleKo||""})`,`${st?st.ko:s.style} · ${s.bpm} BPM · ${s.key} · ${VOCAL_KO[s.vocal]||""}`,
+    `[장르 · Style of Music]\n${s.styleText}`,`[제외 · Exclude Styles]\n${s.exclude||EXCLUDE}`];
+  if(inst||(!p.en&&!p.ko))parts.push(`[연주곡 · Lyrics 칸]\n${s.lyrics}`);
+  else{if(p.en)parts.push(`[영어 가사]\n${p.en}`);if(p.ko)parts.push(`[한글 가사]\n${p.ko}`)}
+  return parts.join("\n\n");
+}
+$("batchCopy").onclick=()=>{if(!batch.length){toast("먼저 한번에 만들기를 눌러 주세요");return}copy(batch.map(fullSongText).join("\n\n────────────\n\n"))};
 $("batchList").addEventListener("click",e=>{const c=e.target.closest("[data-bcopy]");if(c){copy(songText(batch[+c.dataset.bcopy]));return}
   const sv=e.target.closest("[data-bsave]");if(sv){Store.put(songItem(batch[+sv.dataset.bsave])).then(()=>toast("보관함에 저장했어요"))}});
 
