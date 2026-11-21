@@ -136,6 +136,10 @@ summary{cursor:pointer;font-weight:600}
 .thumbs button{padding:0;border:2px solid transparent;border-radius:8px;background:none;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:stretch;font:inherit;font-size:12px;color:var(--muted);min-width:0}
 .thumbs button canvas{width:100%;height:auto;border-radius:6px;display:block}
 .thumbs button[aria-pressed=true]{border-color:var(--accent);color:var(--accent);font-weight:600}
+.lyrics{font-family:var(--display);font-size:16px;line-height:1.9;background:var(--bg);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.lyrics .sec{display:flex;flex-direction:column}
+.lyrics .lab{font-family:var(--body);font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--brass)}
+.lyrics .none{font-family:var(--body);font-size:13.5px;color:var(--muted)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
 .toast.on{opacity:1}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -193,6 +197,10 @@ summary{cursor:pointer;font-weight:600}
           <div class="row"><button class="btn ghost small ai" id="aiLyrics" hidden>AI로 가사 새로 쓰기</button><button class="btn ghost small" data-copy="oneLyr">복사</button></div></div>
         <pre class="out" id="oneLyr"></pre>
         <div class="meta" id="aiNote"></div>
+      </div>
+      <div class="block">
+        <div class="block-head"><h3>가사 보기</h3><button class="btn ghost small" id="copyRead">가사만 복사</button></div>
+        <div class="lyrics" id="oneRead"></div>
       </div>
       <div class="row"><button class="btn ghost" id="copyOne">세 칸 전체 복사</button></div>
       <p class="note">Suno → Create → Custom에서 Style 칸, Exclude 칸, Lyrics 칸에 각각 붙여 넣으세요. 연주곡이면 Instrumental을 켭니다. 수익 채널에 쓸 곡은 유료 플랜 가입 중에 만들어야 합니다.</p>
@@ -620,6 +628,7 @@ function renderLib(){
       <select data-act="status" aria-label="진행 상태" style="width:auto">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${s.status===k?" selected":""}>${v}</option>`).join("")}</select>
       <label class="check"><input type="checkbox" data-act="paid"${s.paid?" checked":""}> 유료 플랜에서 생성</label>
     </div>
+    <details><summary>가사 보기</summary><div class="lyrics" style="margin-top:8px">${lyricsHTML(s.lyrics)}</div></details>
     <details><summary>프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     <div class="row"><button class="btn ghost small" data-act="copy">복사</button><button class="btn danger small" data-act="del">삭제</button></div>
   </div>`).join("");
@@ -706,7 +715,7 @@ Rules:
 - Output only the lyrics with tags. No title line, no explanation.`;
   try{
     const r=await sample(prompt,{onText:({text})=>{$("oneLyr").textContent=text},cache:false});
-    one.lyrics=r.text.trim();$("oneLyr").textContent=one.lyrics;$("aiNote").textContent="Claude가 쓴 가사예요. 마음에 들게 고친 뒤 쓰세요."+(r.truncated?" (길이 제한으로 끝이 잘렸어요)":"");
+    one.lyrics=r.text.trim();$("oneLyr").textContent=one.lyrics;updateRead();$("aiNote").textContent="Claude가 쓴 가사예요. 마음에 들게 고친 뒤 쓰세요."+(r.truncated?" (길이 제한으로 끝이 잘렸어요)":"");
   }catch(e){
     $("oneLyr").textContent=one.lyrics;
     $("aiNote").textContent=e&&e.code==="not_granted"?"AI 사용이 허용되지 않았어요. 기본 가사를 그대로 쓰세요.":e&&e.code==="rate_limited"?"잠시 쉬었다가 다시 눌러 주세요.":"가사를 받지 못했어요. 잠시 뒤 다시 눌러 주세요.";
@@ -845,6 +854,28 @@ $("thSave").onclick=async()=>{
 };
 const thFontsReady=(document.fonts?Promise.all([document.fonts.load('700 100px "Gowun Batang"'),document.fonts.load('500 30px "IBM Plex Sans KR"')]):Promise.resolve()).catch(()=>{});
 
+// ---------- readable lyrics ----------
+const SEC_KO={"verse 1":"1절","verse 2":"2절","verse 3":"3절","verse":"절","pre-chorus":"프리코러스","chorus":"후렴","bridge":"브릿지","hook":"후렴"};
+function lyricSections(lyrics){
+  const out=[];let cur=null;
+  String(lyrics||"").split("\n").forEach(line=>{
+    const t=line.trim();const tag=t.match(/^\[([^\]:]+)(?::[^\]]*)?\]$/);
+    if(tag){const k=tag[1].trim().toLowerCase();cur=SEC_KO[k]?{lab:SEC_KO[k],lines:[]}:null;if(cur)out.push(cur);return}
+    if(!t||/^\(.*\)$/.test(t))return;
+    if(!cur){cur={lab:"",lines:[]};out.push(cur)}
+    cur.lines.push(t);
+  });
+  return out.filter(x=>x.lines.length);
+}
+function lyricsHTML(lyrics){
+  const secs=lyricSections(lyrics);
+  if(!secs.length)return '<p class="none">연주곡이라 가사가 없어요. 가사가 있는 곡을 만들려면 위 설정의 <b>보컬</b>에서 여성 보컬이나 남성 보컬을 고르세요.</p>';
+  return secs.map(x=>`<div class="sec">${x.lab?`<span class="lab">${x.lab}</span>`:""}${x.lines.map(h).join("<br>")}</div>`).join("");
+}
+const lyricsText=l=>lyricSections(l).map(x=>(x.lab?"["+x.lab+"]\n":"")+x.lines.join("\n")).join("\n\n");
+function updateRead(){$("oneRead").innerHTML=lyricsHTML(one.lyrics)}
+$("copyRead").onclick=()=>{const t=lyricsText(one.lyrics);if(!t){toast("연주곡이라 복사할 가사가 없어요");return}copy(t,$("oneRead"))};
+
 // ---------- batch create ----------
 let batch=[];
 function makeBatch(){
@@ -865,7 +896,8 @@ function makeBatch(){
   const mins=n*(parseFloat($("avg").value)||3.2);
   $("batchMeta").textContent=`${n}곡 · 약 ${Math.round(mins)}분`;
   $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)}${s.vocal!=="inst"?" · "+VOCAL_KO[s.vocal]:""}</span></summary>
-    <pre class="out" style="margin-top:8px">${h(songText(s))}</pre>
+    <div class="lyrics" style="margin-top:8px">${lyricsHTML(s.lyrics)}</div>
+    <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     <div class="row" style="margin-top:8px"><button class="btn ghost small" data-bcopy="${i}">복사</button><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
   $("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;syncTracks();
 }
@@ -895,6 +927,7 @@ Store.on(()=>{renderLib();renderPlan();renderLog();syncTracks()});
 renderOne();renderLib();renderPlan();renderLog();syncTracks();
 try{const v=localStorage.getItem("slowcup-view");if(VIEWS.includes(v))go(v)}catch(e){}
 initStore();initAI();
+const _renderOne=renderOne;renderOne=function(){_renderOne();updateRead()};updateRead();
 const _renderYT=renderYT;renderYT=function(){_renderYT();if(!thEdited)refillThumbText();drawThumbs()};
 refillThumbText();drawThumbs();thFontsReady.then(drawThumbs);
 </script>
