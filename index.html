@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611212020";
+  var APP_VERSION = "202611212028";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -298,7 +298,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
           <option value="inst">연주곡</option><option value="scat">허밍·스캣</option></select></label>
         <label>가사 언어<select id="lang">
           <option value="en" selected>영어</option><option value="ko">한국어</option><option value="mix">한국어 + 영어 후렴</option></select></label>
-        <label>채널 이름<input type="text" id="channel" value="Slow Cup Jazz"></label>
+        <label>채널 이름<input type="text" id="channel" value="qqyvren"></label>
       </div>
     </div>
   </section>
@@ -648,6 +648,7 @@ const SKEY="slowcup-settings";
 try{const s=JSON.parse(localStorage.getItem(SKEY)||"{}");for(const k in s){if($(k)){if($(k).type==="checkbox")$(k).checked=s[k];else $(k).value=s[k]}}}catch(e){}
 try{if(!localStorage.getItem("slowcup-lang-en")){$("lang").value="en";localStorage.setItem("slowcup-lang-en","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.lang="en";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("lang").value="en"}
 try{if(!localStorage.getItem("slowcup-vocal-female")){$("vocal").value="female";localStorage.setItem("slowcup-vocal-female","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.vocal="female";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("vocal").value="female"}
+try{if(!localStorage.getItem("slowcup-channel-qq")){$("channel").value="qqyvren";localStorage.setItem("slowcup-channel-qq","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.channel="qqyvren";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("channel").value="qqyvren"}
 function save(){try{const o={};["mood","place","style","vocal","lang","channel","count","avg","mixStyle","mixVocal"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
 const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").value,vocal:$("vocal").value,lang:$("lang").value});
 
@@ -868,7 +869,7 @@ const fmt=sec=>{const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=Math.fl
 
 // YOUTUBE
 function renderYT(){
-  const c=cfg(),M=MOODS[c.mood],P=PLACES[c.place],S=STYLES[c.style],ch=$("channel").value.trim()||"Slow Cup Jazz";
+  const c=cfg(),M=MOODS[c.mood],P=PLACES[c.place],S=STYLES[c.style],ch=$("channel").value.trim()||"qqyvren";
   const avg=(parseFloat($("avg").value)||3.2)*60;const total=list.length*avg;const hrs=Math.max(1,Math.round(total/3600));
   const dur=total<5400?"1시간":hrs+"시간";const durEn=total<5400?"1 Hour":hrs+" Hours";
   const where={cafe:"카페에서",bookstore:"책 읽을 때",bakery:"아침에",shop:"매장에서",home:"집에서",work:"작업할 때"}[c.place];
@@ -1094,7 +1095,7 @@ $("libList").addEventListener("click",async e=>{const b=e.target.closest("[data-
     const r=await saveBlobFile(zipName,new Blob([makeZip(files)],{type:"application/zip"}));
     toast(r==="saved"?`${songs.length}곡을 곡마다 한 파일씩(.docx) 묶어 저장했어요`:r==="declined"?"저장을 취소했어요":"이 화면에서는 파일 저장이 안 돼요");return}
   if(b.dataset.gact==="file"){const c=new Date(songs[0].created||Date.now()),pad=n=>String(n).padStart(2,"0");const name=`slowcup-${c.getFullYear()}${pad(c.getMonth()+1)}${pad(c.getDate())}-${pad(c.getHours())}${pad(c.getMinutes())}-${songs.length}songs`;
-    const head=`${songs[0].groupName||"Slow Cup Jazz 곡 모음"}\n${songs.length}곡 · ${$("channel").value||"Slow Cup Jazz"}\n\n[곡 목록]\n${tracklistText(songs)}\n\n════════════════\n\n`;
+    const head=`${songs[0].groupName||"Slow Cup Jazz 곡 모음"}\n${songs.length}곡 · ${$("channel").value||"qqyvren"}\n\n[곡 목록]\n${tracklistText(songs)}\n\n════════════════\n\n`;
     const r=await saveTextFile(`${name}.txt`,head+songs.map(fullSongText).join("\n\n────────────\n\n"));
     toast(r==="saved"?"파일로 저장했어요":r==="declined"?"저장을 취소했어요":"파일 저장이 안 되는 곳이라 내용을 복사했어요")}});
 $("backup").onclick=()=>copy(JSON.stringify([...Store.items.values()],null,1));
@@ -1289,7 +1290,7 @@ function drawScene(x,W,H){
   x.fillStyle=`rgba(10,12,14,${$("thDim").value/100})`;x.fillRect(0,0,W,H);
 }
 function drawText(x,W,H,layout){
-  const u=W/1280,col=TH_COLORS[$("thColor").value],l1=$("thL1").value,l2=$("thL2").value,sub=$("thSub").value,brand=$("channel").value.trim()||"Slow Cup Jazz";
+  const u=W/1280,col=TH_COLORS[$("thColor").value],l1=$("thL1").value,l2=$("thL2").value,sub=$("thSub").value,brand=$("channel").value.trim()||"qqyvren";
   const disp='"Gowun Batang", "Nanum Myeongjo", Georgia, serif',bodyF='"IBM Plex Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif';
   const fit=(t,max,size)=>{x.font=`700 ${size}px ${disp}`;while(x.measureText(t).width>max&&size>30){size-=4;x.font=`700 ${size}px ${disp}`}return size};
   x.textBaseline="alphabetic";x.shadowColor="rgba(0,0,0,.55)";x.shadowBlur=18*u;x.shadowOffsetY=3*u;
@@ -1642,7 +1643,7 @@ function renderYtMode(){
 }
 // Upload texts for one song: titles, thumbnail lines, description (with its lyrics) and tags.
 function renderYTSong(s){
-  const M=MOODS[s.mood]||MOODS.rain,P=PLACES[s.place]||PLACES.cafe,S=STYLES[s.style]||STYLES.bossa,ch=$("channel").value.trim()||"Slow Cup Jazz";
+  const M=MOODS[s.mood]||MOODS.rain,P=PLACES[s.place]||PLACES.cafe,S=STYLES[s.style]||STYLES.bossa,ch=$("channel").value.trim()||"qqyvren";
   const sname=S.name.split(",")[0].replace(/\b\w/g,x=>x.toUpperCase()),ko=s.titleKo||s.title;
   const titles=[`${s.title} | ${M.ko} ${S.ko}`,`${ko} — ${M.ko}, ${P.ko}에서 듣는 ${S.ko}`,`${s.title} (${ko}) · ${sname} for ${M.en}`,`${M.ko}에 듣기 좋은 ${S.ko} | ${s.title}`,`${s.title} · ${M.en} ${P.en} Jazz | ${ch}`];
   $("ytTitles").textContent=titles.join("\n\n");
