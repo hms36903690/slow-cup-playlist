@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211526";
+  var APP_VERSION = "202611211538";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -187,6 +187,8 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .cal-legend .dot.up{border-color:var(--accent);background:var(--surface)}
 .cal-legend .dot.done{background:var(--good);border-color:var(--good)}
 .cal-legend .dot.today{box-shadow:inset 0 0 0 2px var(--brass)}
+.chk-ok{color:var(--good)}
+.chk-bad{color:var(--bad)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
 .toast.on{opacity:1}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -240,6 +242,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
           <pre class="out lyr" id="oneKo"></pre>
         </div>
       </div>
+      <div class="meta" id="lyrCheck"></div>
       <div class="row" id="lyrNoRow" hidden><span class="meta">지금은 연주곡이라 가사가 없어요.</span><button class="btn small" id="toVocal">가사 있는 곡으로 바꾸기</button></div>
       <div class="row" id="lyrBothRow"><button class="btn ghost small" id="copyBoth">영어 + 한글 함께 복사</button></div>
       <p class="note" style="margin:0">아래 세 칸은 Suno에 붙여 넣는 내용이에요.</p>
@@ -557,16 +560,133 @@ function makeStyle(c,bpm,key){
   return `${S.name}, ${inst}, ${bpm} BPM, ${key}, ${M.kw}, ${P.kw}, warm vintage mix, soft dynamics, ${VOCAL[c.vocal]}`;
 }
 const EXCLUDE="heavy drums, distorted guitar, EDM drops, loud brass, aggressive vocals, autotune";
-// Lyrics are picked as index pairs so the English and Korean versions are line-by-line translations.
-function verseIdx(c){
-  const M=MOODS[c.mood],P=PLACES[c.place];
-  const idx=pickN(M.lyEn.map((_,i)=>i),3);const pi=Math.floor(rng()*P.lyEn.length),pos=rint(0,2);
-  const build=k=>{const L=idx.map(i=>M[k][i]);L.splice(pos,0,P[k][pi]);return L.join("\n")};
-  return{en:build("lyEn"),ko:build("lyKo")};
+// ---------- original lyrics generator ----------
+// Each line is assembled from word pieces as an English/Korean pair, then checked against every
+// earlier lyric (old built-in example lines, saved songs, songs in the current batch).
+// A line is rejected if it repeats a whole line or shares any run of 3 consecutive words.
+const LX={
+ N:[["teacup","찻잔"],["saucer","받침 접시"],["paper napkin","종이 냅킨"],["receipt","영수증"],["umbrella","우산"],["scarf","목도리"],["notebook","공책"],["pencil stub","몽당연필"],
+  ["postcard","엽서"],["record sleeve","레코드 커버"],["radio","라디오"],["reading lamp","독서등"],["curtain","커튼"],["wooden chair","나무 의자"],["coat hook","옷걸이"],["glove","장갑"],
+  ["house key","집 열쇠"],["bus ticket","버스표"],["photograph","사진 한 장"],["houseplant","화분"],["candle","촛불"],["kettle","주전자"],["sugar cube","각설탕"],["cinnamon stick","계피 막대"],
+  ["croissant","크루아상"],["apron","앞치마"],["chalkboard menu","칠판 메뉴"],["doorbell","문종"],["bicycle","자전거"],["paper boat","종이배"],["wristwatch","손목시계"],["bookmark","책갈피"],
+  ["magazine","잡지"],["sketchbook","스케치북"],["milk jug","우유 단지"],["spoon","티스푼"],["windowsill","창턱"],["armchair","안락의자"],["typewriter","타자기"],["seashell","조개껍데기"],
+  ["thimble","골무"],["music box","오르골"],["hat","모자"],["sweater","스웨터"],["wool sock","털양말"],["honey jar","꿀단지"],["teapot","찻주전자"],["mug","머그잔"],["jukebox","주크박스"],["metronome","메트로놈"],["raincoat","비옷"],["flower pot","꽃화분"],["coffee bean","커피콩"],["teaspoon","찻숟가락"],["cookie tin","쿠키 상자"],["lantern","등불"],["harmonica","하모니카"],["cassette","카세트테이프"],["ribbon","리본"],["button","단추"],["envelope","편지 봉투"],["paper lantern","종이 등"],["cardigan","카디건"],["shoelace","신발 끈"],["stool","둥근 의자"],["clock","벽시계"],["wind chime","풍경"],["violin case","바이올린 케이스"],["recipe card","레시피 카드"],["coat pocket","외투 주머니"]],
+ MN:{rain:[["drizzle","이슬비"],["gutter","빗물받이"],["rain boot","장화"],["wet pavement","젖은 보도"],["foggy pane","김 서린 유리"],["drip","물방울"]],
+  sunny:[["sunbeam","햇살 한 줄기"],["lemonade","레모네이드"],["sun hat","밀짚모자"],["breeze","산들바람"],["shadow","그림자"],["skylight","천창"]],
+  evening:[["sunset","노을"],["dusk","해 질 녘"],["porch light","현관 불빛"],["evening star","저녁별"],["long shadow","긴 그림자"],["twilight","땅거미"]],
+  night:[["moonlight","달빛"],["neon sign","네온사인"],["night bus","심야 버스"],["last train","막차"],["streetlamp","가로등"],["midnight","자정"]],
+  autumn:[["maple leaf","단풍잎"],["chestnut","군밤"],["pumpkin","호박"],["acorn","도토리"],["harvest moon","한가위 달"],["fallen leaf","낙엽"]],
+  winter:[["snowflake","눈송이"],["mitten","벙어리장갑"],["frost","서리"],["cocoa","코코아"],["fireplace","벽난로"],["snowman","눈사람"]],
+  spring:[["blossom","꽃잎"],["sprout","새싹"],["tulip","튤립"],["swallow","제비"],["kite","연"],["meadow","풀밭"]]},
+ A:[["faded","빛바랜"],["quiet","조용한"],["borrowed","빌려 온"],["crooked","비뚤어진"],["sleepy","졸린"],["gentle","다정한"],["half-empty","반쯤 빈"],["golden","금빛"],
+  ["silver","은빛"],["dusty","먼지 앉은"],["tiny","조그만"],["patient","참을성 있는"],["lazy","게으른"],["warm","따뜻한"],["cool","서늘한"],["unhurried","서두르지 않는"],
+  ["crumpled","구겨진"],["polished","반들반들한"],["worn","낡은"],["amber","호박빛"],["misty","안개 낀"],["honeyed","꿀빛"],["restless","들뜬"],["tender","여린"],
+  ["steady","한결같은"],["humble","소박한"],["pale","창백한"],["rosy","발그레한"],["smoky","희뿌연"],["shy","수줍은"],["forgotten","잊힌"],["newborn","갓 태어난"],["bashful","부끄러운"],["drowsy","나른한"],["velvety","보드라운"],["lopsided","한쪽으로 기운"],["sunlit","햇볕 든"],["rain-soaked","비에 젖은"],["hand-painted","손으로 칠한"],["chipped","이 빠진"],["freckled","주근깨 같은"],["wistful","아련한"],["mellow","순한"],["sugary","달콤한"],["silent","말 없는"],["second-hand","중고"],["blue","푸른"],["lavender","라벤더빛"],["peach-colored","복숭앗빛"],["paper-thin","종이처럼 얇은"],["midnight-blue","한밤 푸른빛"],["sleepless","잠 못 드는"]],
+ V:[["hums along","나직이 흥얼거려"],["sways","살랑 흔들려"],["waits","가만히 기다려"],["glows","은은히 빛나"],["drifts","둥실 떠다녀"],["dozes","꾸벅 졸고 있어"],
+  ["listens","귀를 기울여"],["trembles","살짝 떨려"],["keeps time","박자를 맞춰"],["turns gold","금빛으로 물들어"],["cools slowly","천천히 식어 가"],["remembers","기억하고 있어"],
+  ["spins","빙글 돌아"],["sighs","한숨을 쉬어"],["smiles","미소 지어"],["blinks","깜빡여"],["settles","내려앉아"],["wanders","서성여"],["hides","숨어 있어"],["lingers","머뭇거려"],
+  ["whistles","휘파람을 불어"],["shimmers","반짝여"],["leans closer","가까이 기대"],["counts raindrops","빗방울을 세어"]],
+ PR:[["by the","{} 옆에서"],["under the","{} 아래에서"],["near the","{} 가까이에서"],["behind the","{} 뒤에서"],["across the","{} 건너편에서"],["beside the","{} 곁에서"],["inside the","{} 안에서"],["past the","{}를 지나"]],
+ PN:[["counter","카운터"],["window","창문"],["doorway","문간"],["staircase","계단"],["bookshelf","책장"],["piano","피아노"],["awning","차양"],["terrace","테라스"],["crosswalk","횡단보도"],
+  ["bus stop","버스 정류장"],["bakery","빵집"],["flower stall","꽃 가판대"],["bridge","다리"],["harbor","항구"],["platform","승강장"],["alley","골목"],["balcony","발코니"],["rooftop","옥상"],
+  ["park bench","공원 벤치"],["kitchen","부엌"],["bandstand","연주 무대"],["fountain","분수대"],["lamp post","가로등 기둥"],["record shop","레코드 가게"],["laundromat","빨래방"],["library","도서관"]],
+ T:[["at half past four","네 시 반에"],["before the rush","손님이 몰리기 전에"],["after the last bus","막차가 떠난 뒤에"],["on a slow Tuesday","느린 화요일에"],["this drowsy morning","나른한 이 아침에"],
+  ["all afternoon","오후 내내"],["until closing","문 닫을 때까지"],["between two songs","노래와 노래 사이에"],["since the first cup","첫 잔부터"],["when the kettle sings","주전자가 노래할 때"],
+  ["around noon","정오 무렵"],["at a quarter to nine","아홉 시 십오 분 전에"],["on Sunday mornings","일요일 아침마다"],["every other Friday","격주 금요일마다"],["at dawn","새벽녘에"],
+  ["just past midnight","자정을 막 넘겨"],["while the bread rises","빵이 부푸는 동안"],["once the lights dim","불빛이 낮아지면"],["till the rain lets up","비가 그칠 때까지"],["on the way home","집으로 가는 길에"]],
+ F:[["my shoulders finally drop","어깨가 드디어 스르르 풀려"],["nobody asks me to hurry","아무도 나를 재촉하지 않아"],["the day forgets its name","하루가 제 이름을 잊어"],["my heartbeat slows to brushes","심장이 브러시 소리처럼 느려져"],
+  ["I hear my own breathing","내 숨소리가 들려"],["the noise outside goes soft","바깥 소음이 부드러워져"],["I stop checking the time","시계를 그만 보게 돼"],["small worries fold away","작은 걱정들이 접혀 들어가"],
+  ["a smile sneaks in","미소가 슬며시 번져"],["I feel lighter than paper","종이보다 가벼워져"],["the hours loosen their grip","시간이 움켜쥔 손을 놓아"],["my thoughts walk barefoot","생각들이 맨발로 걸어"],
+  ["everything can wait","모든 게 기다려 줄 수 있어"],["I am exactly where I belong","나는 꼭 있어야 할 곳에 있어"],["the city lowers its voice","도시가 목소리를 낮춰"],["tired eyes grow kind","지친 눈이 다정해져"]],
+ I:[["leave the dishes","설거지는 그냥 둬"],["rest your eyes","눈을 잠시 감아"],["breathe it in","깊이 들이마셔"],["hum the melody","멜로디를 흥얼거려"],["loosen your scarf","목도리를 느슨히 풀어"],
+  ["pull up a chair","의자를 끌어와 앉아"],["let it steep","천천히 우러나게 둬"],["warm your hands","두 손을 녹여"],["slow your steps","걸음을 늦춰"],["tap along","박자에 맞춰 톡톡 두드려"],
+  ["save me a seat","내 자리 하나 남겨 줘"],["turn the page","책장을 넘겨"],["stay a while","잠시 머물러"],["sip it slowly","천천히 한 모금 마셔"]],
+ ADV:[["softly","부드럽게"],["slowly","느리게"],["again","한 번 더"],["once more","다시 한번"],["lightly","가볍게"],["sweetly","달콤하게"]]
+};
+// Combinable time / feeling / request phrases (so long fixed phrases are not the only option).
+const LX2={
+ TP:[["on","{}에"],["before the","{} 전에"],["after the","{} 뒤에"],["through the","{} 내내"]],
+ TN:[["Tuesday","화요일"],["Sunday","일요일"],["morning","아침"],["evening","저녁"],["afternoon","오후"],["weekend","주말"],["noon","한낮"],["daybreak","새벽"],["holiday","휴일"],["lunch break","점심시간"],["rush hour","출퇴근 시간"],["Thursday","목요일"],["first snow","첫눈 오는 날"],["long night","긴 밤"]],
+ FS:[["my shoulders","어깨가"],["my hands","두 손이"],["my thoughts","생각들이"],["my heart","마음이"],["the room","방 안이"],["the city","도시가"],["the hours","시간이"],["old worries","묵은 걱정이"],["tired eyes","지친 눈이"],["the afternoon","오후가"],["my footsteps","발걸음이"],["the window glass","유리창이"],["my breathing","숨결이"],["the steam","김이"],["the melody","멜로디가"],["the old floor","낡은 마룻바닥이"],["every sound","모든 소리가"],["the street","거리가"]],
+ FA:[["slowly","천천히"],["gently","살며시"],["finally","드디어"],["quietly","조용히"],["softly","부드럽게"],["kindly","다정하게"],["lazily","느릿느릿"],["warmly","포근하게"],["sleepily","졸린 듯"],["shyly","수줍게"],["easily","가뿐히"],["silently","소리 없이"],["sweetly","달콤하게"],["calmly","차분히"]],
+ FV:[["soften","누그러져"],["unwind","풀려"],["slow down","느려져"],["go quiet","잠잠해져"],["grow warm","따뜻해져"],["float","떠올라"],["rest","쉬어"],["melt","녹아"],["sway","흔들려"],["breathe","숨 쉬어"]],
+ IV:[["Hold","{} 꼭 쥐어"],["Warm","{} 데워"],["Fold","{} 접어"],["Open","{} 열어"],["Polish","{} 닦아"],["Carry","{} 들고 가"],["Keep","{} 간직해"],["Find","{} 찾아"],["Wrap up","{} 감싸"],["Leave","{} 두고 가"]]
+};
+const anA=w=>(/^[aeiou]/i.test(w)?"an ":"a ")+w;
+function lxP2(k){return LX2[k][Math.floor(rng()*LX2[k].length)]}
+function lxTime(){if(rng()<.2)return lxPick("T");const tp=lxP2("TP"),a=lxPick("A"),tn=lxP2("TN");
+  const en=tp[0]==="on"?`on ${anA(a[0])} ${tn[0]}`:`${tp[0]} ${a[0]} ${tn[0]}`;return[en,tp[1].replace("{}",`${a[1]} ${tn[1]}`)]}
+function lxFeel(){if(rng()<.2)return lxPick("F");const s=lxP2("FS"),a=lxP2("FA"),v=lxP2("FV");return[`${s[0]} ${a[0]} ${v[0]}`,`${s[1]} ${a[1]} ${v[1]}`]}
+function lxImp(m){if(rng()<.2)return lxPick("I");const v=lxP2("IV"),a=lxPick("A"),n=lxNoun(m);return[`${v[0].toLowerCase()} the ${a[0]} ${n[0]}`,v[1].replace("{}",`${a[1]} ${josa(n[1],"을","를")}`)]}
+function josa(w,a,b){const c=w.charCodeAt(w.length-1);if(c<0xAC00||c>0xD7A3)return w+b;return w+(((c-0xAC00)%28)?a:b)}
+function lxPick(k){return LX[k][Math.floor(rng()*LX[k].length)]}
+function lxNoun(mood){const m=LX.MN[mood];return(m&&rng()<.45)?m[Math.floor(rng()*m.length)]:lxPick("N")}
+function lxPlace(){const pr=lxPick("PR"),a=lxPick("A"),pn=lxPick("PN");
+  const kn=`${a[1]} ${pn[1]}`;return[`${pr[0]} ${a[0]} ${pn[0]}`,pr[1].includes("{}를")?pr[1].replace("{}를",josa(kn,"을","를")):pr[1].replace("{}",kn)]}
+const LX_TEMPLATES=[
+ m=>{const a=lxPick("A"),n=lxNoun(m),p=lxPlace();return[`${cap(a[0])} ${n[0]} ${p[0]}`,`${p[1]} ${a[1]} ${n[1]}`]},
+ m=>{const a=lxPick("A"),n=lxNoun(m),v=lxPick("V");return[`The ${a[0]} ${n[0]} ${v[0]}`,`${a[1]} ${josa(n[1],"이","가")} ${v[1]}`]},
+ m=>{const t=lxTime(),f=lxFeel();return[`${cap(t[0])}, ${f[0]}`,`${t[1]}, ${f[1]}`]},
+ m=>{const i=lxImp(m),p=lxPlace();return[`${cap(i[0])} ${p[0]}`,`${p[1]} ${i[1]}`]},
+ m=>{const f=lxFeel(),t=lxTime();return[`${cap(f[0])} ${t[0]}`,`${t[1]} ${f[1]}`]},
+ m=>{const a=lxPick("A"),n=lxNoun(m),a2=lxPick("A");let n2=lxNoun(m);for(let k=0;k<5&&n2[0]===n[0];k++)n2=lxNoun(m);return[`Just a ${a[0]} ${n[0]} and a ${a2[0]} ${n2[0]}`,`${a[1]} ${josa(n[1],"과","와")} ${a2[1]} ${n2[1]}뿐`]},
+ m=>{const n=lxNoun(m),v=lxPick("V"),t=lxTime();return[`My ${n[0]} ${v[0]} ${t[0]}`,`${t[1]} 내 ${josa(n[1],"이","가")} ${v[1]}`]}
+];
+const LX_HOOKS=[
+ m=>{const a=lxPick("A"),n=lxNoun(m),p=lxPlace();return[`${cap(a[0])} ${n[0]}, stay ${p[0]}`,`${a[1]} ${n[1]}, ${p[1]} 머물러 줘`]},
+ m=>{const ad=lxPick("ADV"),a=lxPick("A"),n=lxNoun(m),pv=[["Play","연주해"],["Sing","불러"],["Hum","흥얼거려"],["Whisper","속삭여"],["Spin","돌려"],["Strum","튕겨"]][Math.floor(rng()*6)];return[`${pv[0]} it ${ad[0]} for the ${a[0]} ${n[0]}`,`${a[1]} ${josa(n[1],"을","를")} 위해 ${ad[1]} ${pv[1]} 줘`]},
+ m=>{const i=lxImp(m),ad=lxPick("ADV");return[`${cap(i[0])}, ${i[0]} ${ad[0]}`,`${i[1]}, ${ad[1]} ${i[1]}`]}
+];
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+// --- duplicate check ---
+function lxNorm(s){return String(s||"").toLowerCase().replace(/[^\p{L}\p{N}\s'-]/gu," ").replace(/\s+/g," ").trim()}
+// Function words don't make an "expression": a 3-word run counts only when at least 2 of its words carry meaning.
+const LX_FN=new Set(("a an the and or of by on in at to for from with under near behind across beside inside past through before after it its my me i we our your you is am are be just "+
+ "옆에서 아래에서 가까이에서 뒤에서 건너편에서 곁에서 안에서 지나 위해 줘 전에 뒤에 내내 내 나는 그리고 또 다시 뿐").split(" "));
+function lxGrams(line,n){n=n||3;const w=lxNorm(line).split(" ").filter(Boolean),g=[];for(let i=0;i+n<=w.length;i++){const t=w.slice(i,i+n);if(t.filter(x=>!LX_FN.has(x)).length>=2)g.push(t.join(" "))}return g}
+function lxTextLines(t){return String(t||"").split("\n").map(l=>l.trim()).filter(l=>l&&!/^\[.*\]$/.test(l)&&!/^\(.*\)$/.test(l))}
+// Strict (3-word) against example lyrics and the current playlist; whole line + 4-word against the rest of the library.
+// Library part: every saved line (whole-line check) + 4-word runs from the 150 most recent songs. Cached until the library changes.
+let _libCache=null;
+function libCorpus(skip){
+  let songs=[];try{if(typeof Store!=="undefined")songs=Store.all("song")}catch(e){}
+  const key=songs.length+"|"+songs.reduce((m,s)=>s.created>m?s.created:m,"");
+  if(!_libCache||_libCache.key!==key){
+    const lines=new Set(),grams4=new Set();
+    songs.forEach(s=>[s.lyrics,s.lyricsEn,s.lyricsKo].forEach(t=>lxTextLines(t).forEach(l=>lines.add(lxNorm(l)))));
+    songs.slice().sort((a,b)=>(b.created||"").localeCompare(a.created||"")).slice(0,150)
+      .forEach(s=>[s.lyrics,s.lyricsEn,s.lyricsKo].forEach(t=>lxTextLines(t).forEach(l=>lxGrams(l,4).forEach(g=>grams4.add(g)))));
+    _libCache={key,lines,grams4};
+  }
+  return _libCache;
 }
-function chorusIdx(c){
-  const M=MOODS[c.mood];const hi=Math.floor(rng()*M.hookEn.length);const idx=pickN(CHO_EN.map((_,i)=>i),3);
-  return{en:[M.hookEn[hi],...idx.map(i=>CHO_EN[i])].join("\n"),ko:[M.hookKo[hi],...idx.map(i=>CHO_KO[i])].join("\n")};
+function lyricCorpus(skip){
+  const strict=[],loose=[];const add=(arr,t)=>lxTextLines(t).forEach(l=>arr.push(l));
+  Object.values(MOODS).forEach(M=>{M.lyKo.concat(M.lyEn,M.hookKo,M.hookEn).forEach(l=>strict.push(l))});
+  Object.values(PLACES).forEach(P=>P.lyKo.concat(P.lyEn).forEach(l=>strict.push(l)));CHO_KO.concat(CHO_EN).forEach(l=>strict.push(l));
+  try{if(typeof batch!=="undefined")batch.forEach(s=>{if(s!==skip){add(strict,s.lyrics);add(strict,s.lyricsEn);add(strict,s.lyricsKo)}})}catch(e){}
+  const set=new Set(),grams=new Set();
+  strict.forEach(l=>{set.add(lxNorm(l));lxGrams(l).forEach(g=>grams.add(g))});
+  const lib=libCorpus(skip);lib.lines.forEach(l=>set.add(l));
+  return{set,grams,grams4:lib.grams4};
+}
+function lxClash(line,C){const n=lxNorm(line);if(C.set.has(n))return true;if(lxGrams(line).some(g=>C.grams.has(g)))return true;return!!C.grams4&&lxGrams(line,4).some(g=>C.grams4.has(g))}
+const LX_STOP=new Set("just stay play with from your that this into past near behind across beside inside under once more the and for until till when while every other around before after since between".split(" "));
+const lxWords=en=>lxNorm(en).split(" ").filter(w=>w.length>=4&&!LX_STOP.has(w));
+function lxTake(gen,mood,C,own){
+  own.words=own.words||new Set();
+  for(let k=0;k<70;k++){const [en,ko]=gen(mood);if(lxClash(en,C)||lxClash(ko,C)||lxClash(en,own)||lxClash(ko,own))continue;
+    const ws=lxWords(en);if(ws.some(w=>own.words.has(w))||new Set(ws).size<ws.length)continue;
+    [en,ko].forEach(l=>{own.set.add(lxNorm(l));lxGrams(l).forEach(g=>own.grams.add(g))});lxWords(en).forEach(w=>own.words.add(w));return[en,ko]}
+  return null;
+}
+const LX_W=[3,3,2,2,2,1,2];
+function lxPickTemplate(){let r=rng()*LX_W.reduce((a,b)=>a+b,0);for(let i=0;i<LX_W.length;i++){r-=LX_W[i];if(r<0)return LX_TEMPLATES[i]}return LX_TEMPLATES[0]}
+function lxLine(mood,C,own){for(let k=0;k<5;k++){const r=lxTake(lxPickTemplate(),mood,C,own);if(r)return r}return null}
+function checkLyrics(s,skip){
+  const C=lyricCorpus(skip||s);let lines=0,bad=[];
+  [s.lyricsEn,s.lyricsKo,s.lyrics].forEach(t=>lxTextLines(t).forEach(l=>{lines++;if(lxClash(l,C))bad.push(l)}));
+  return{ok:!bad.length,bad:[...new Set(bad)],lines};
 }
 function makeLyricsSet(c){
   const S=STYLES[c.style];
@@ -575,19 +695,27 @@ function makeLyricsSet(c){
     const hum=c.vocal==="scat"?"\n(mm-hmm, da-ba-da)":"";
     return{suno:`[Intro: soft ${S.inst[0]}]\n\n[Theme A: ${S.lead} melody, relaxed]${hum}\n\n[Theme B: warmer, gentle lift]\n\n[Solo: ${solo}, laid-back]\n\n[Theme A Reprise]${hum}\n\n[Outro: slow down, gentle fade out]\n\n[End]`,en:"",ko:""};
   }
-  const v1=verseIdx(c),v2=verseIdx(c),ch=chorusIdx(c);
-  const vl=c.lang==="en"?"en":"ko",cl=c.lang==="ko"?"ko":"en";
-  const suno=`[Intro: soft ${S.inst[0]}]\n\n[Verse 1]\n${v1[vl]}\n\n[Chorus]\n${ch[cl]}\n\n[Instrumental Break: ${S.lead}]\n\n[Verse 2]\n${v2[vl]}\n\n[Chorus]\n${ch[cl]}\n\n[Outro: gentle fade out]\n(${cl==="ko"?"천천히":"slowly"}...)\n\n[End]`;
-  const en=`[Verse 1]\n${v1.en}\n\n[Chorus]\n${ch.en}\n\n[Verse 2]\n${v2.en}\n\n[Chorus]\n${ch.en}`;
-  const ko=`[1절]\n${v1.ko}\n\n[후렴]\n${ch.ko}\n\n[2절]\n${v2.ko}\n\n[후렴]\n${ch.ko}`;
+  const C=lyricCorpus(null),own={set:new Set(),grams:new Set()},m=c.mood;
+  const take=n=>{const out=[];for(let i=0;i<n;i++){const r=lxLine(m,C,own);if(r)out.push(r)}return out};
+  let hook=null;for(let k=0;k<6&&!hook;k++)hook=lxTake(LX_HOOKS[Math.floor(rng()*LX_HOOKS.length)],m,C,own);
+  const v1=take(4),ch=[hook,...take(3)].filter(Boolean),v2=take(4),br=take(2);
+  const L=(arr,i)=>arr.map(x=>x[i]).join("\n");
+  const vl=c.lang==="en"?0:1,cl=c.lang==="ko"?1:0;
+  const suno=`[Intro: soft ${S.inst[0]}]\n\n[Verse 1]\n${L(v1,vl)}\n\n[Chorus]\n${L(ch,cl)}\n\n[Instrumental Break: ${S.lead}]\n\n[Verse 2]\n${L(v2,vl)}\n\n[Chorus]\n${L(ch,cl)}\n\n[Bridge]\n${L(br,vl)}\n\n[Outro: gentle fade out]\n\n[End]`;
+  const en=`[Verse 1]\n${L(v1,0)}\n\n[Chorus]\n${L(ch,0)}\n\n[Verse 2]\n${L(v2,0)}\n\n[Chorus]\n${L(ch,0)}\n\n[Bridge]\n${L(br,0)}`;
+  const ko=`[1절]\n${L(v1,1)}\n\n[후렴]\n${L(ch,1)}\n\n[2절]\n${L(v2,1)}\n\n[후렴]\n${L(ch,1)}\n\n[브릿지]\n${L(br,1)}`;
   return{suno,en,ko};
 }
 function makeLyrics(c){return makeLyricsSet(c).suno}
+
 function makeSong(c,bpm,key,used){
   const S=STYLES[c.style];
   bpm=bpm||rint(S.bpm[0],S.bpm[1]);key=key||pick(KEYS);
   const t=makeTitle(c.mood,c.place,c.style,used);
-  return{...c,bpm,key,title:t.en,titleKo:t.ko,styleText:makeStyle(c,bpm,key),exclude:EXCLUDE,...(L=>({lyrics:L.suno,lyricsEn:L.en,lyricsKo:L.ko}))(makeLyricsSet(c))};
+  const L=makeLyricsSet(c);
+  const song={...c,bpm,key,title:t.en,titleKo:t.ko,styleText:makeStyle(c,bpm,key),exclude:EXCLUDE,lyrics:L.suno,lyricsEn:L.en,lyricsKo:L.ko};
+  song.lyrCheck=L.en?checkLyrics(song):null;
+  return song;
 }
 const songText=s=>`■ ${s.title} (${s.titleKo})\n[Style]\n${s.styleText}\n[Exclude]\n${s.exclude}\n[Lyrics]\n${s.lyrics}`;
 
@@ -730,7 +858,7 @@ function go(v){
 document.querySelectorAll(".tabbar button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.v)));
 
 // ---------- songs → library ----------
-function songItem(s){return{id:"s_"+uid(),kind:"song",title:s.title,titleKo:s.titleKo,styleText:s.styleText,exclude:s.exclude,lyrics:s.lyrics,lyricsEn:s.lyricsEn||"",lyricsKo:s.lyricsKo||"",
+function songItem(s){return{id:"s_"+uid(),kind:"song",title:s.title,titleKo:s.titleKo,styleText:s.styleText,exclude:s.exclude,lyrics:s.lyrics,lyricsEn:s.lyricsEn||"",lyricsKo:s.lyricsKo||"",lyrCheckOk:s.lyrCheck?s.lyrCheck.ok:null,
   bpm:s.bpm,key:s.key,style:s.style,vocal:s.vocal,mood:s.mood,place:s.place,status:"prompt",paid:false,created:new Date().toISOString()}}
 $("saveOne").onclick=async()=>{await Store.put(songItem(one));toast("보관함에 저장했어요")};
 
@@ -862,12 +990,17 @@ Vocal: ${VOCAL[c.vocal]}. Language: ${langTxt}.
 Rules:
 - Use Suno section tags on their own lines: [Intro: ...], [Verse 1], [Chorus], [Instrumental Break: ${STYLES[c.style].lead}], [Verse 2], [Chorus], [Bridge], [Outro: gentle fade out], [End].
 - 4 short lines per verse, 4 lines per chorus, 2 lines bridge. Simple, warm, concrete everyday images (cups, windows, weather, streets). Easy to sing, gentle repetition in the chorus.
-- Do not quote or imitate any existing song, and never mention real artists, brands or song titles.
+- Do not quote or imitate any existing song, and never mention real artists, brands or song titles. Avoid stock phrases; every line must be fresh.
 - Return JSON only: {"suno": the lyrics with all the tags above, in ${langTxt}; "en": the same lyrics in natural English with only [Verse 1], [Chorus], [Verse 2], [Bridge] labels; "ko": a natural Korean translation of "en", line by line, with labels [1절], [후렴], [2절], [브릿지]}.`;
   try{
     const r=await sample.json(prompt,{cache:false});
     if(!r||typeof r.suno!=="string")throw{code:"invalid_json"};
-    one.lyrics=r.suno.trim();one.lyricsEn=String(r.en||"").trim();one.lyricsKo=String(r.ko||"").trim();
+    one.lyrics=r.suno.trim();one.lyricsEn=String(r.en||"").trim();one.lyricsKo=String(r.ko||"").trim();one.lyrCheck=checkLyrics(one);
+    if(!one.lyrCheck.ok){
+      $("aiNote").textContent="겹치는 줄이 있어 한 번 더 쓰는 중이에요";
+      const r2=await sample.json(prompt+`\n- These lines are already used. Do not reuse them or any 3 consecutive words from them:\n${one.lyrCheck.bad.slice(0,40).join("\n")}`,{cache:false});
+      if(r2&&typeof r2.suno==="string"){one.lyrics=r2.suno.trim();one.lyricsEn=String(r2.en||"").trim();one.lyricsKo=String(r2.ko||"").trim();one.lyrCheck=checkLyrics(one)}
+    }
     $("oneLyr").textContent=one.lyrics;updateRead();$("aiNote").textContent="Claude가 쓴 가사예요. 마음에 들게 고친 뒤 쓰세요.";
   }catch(e){
     $("oneLyr").textContent=one.lyrics;
@@ -1040,7 +1173,9 @@ function lyrBlocks(s,src){
   const one=(lab,txt,k)=>`<div class="block" style="margin-top:8px"><div class="block-head"><h3>${lab}</h3>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div><pre class="out lyr">${txt?h(txt):"(가사가 없어요)"}</pre></div>`;
   return one("영어 가사",p.en,"en")+one("한글 가사",p.ko,"ko")+`<div class="row" style="margin-top:8px"><button class="btn ghost small" data-lcopy="both" data-src="${h(src)}">영어 + 한글 함께 복사</button></div>`;
 }
-function updateRead(){const p=lyrPair(one),none=!p.en&&!p.ko;
+function checkHTML(r){if(!r)return"";return r.ok?`<span class="chk-ok">✓ 중복 검사 통과</span> · 예시 가사·보관함·이번 목록과 같은 줄 0개, 3단어 이상 겹침 0개 (${r.lines}줄 검사)`
+  :`<span class="chk-bad">⚠ 겹치는 줄 ${r.bad.length}개</span> · ${r.bad.slice(0,3).map(h).join(" / ")}${r.bad.length>3?" …":""} — <b>다시 뽑기</b>를 눌러 주세요`}
+function updateRead(){$("lyrCheck").innerHTML=checkHTML(one.lyrCheck);const p=lyrPair(one),none=!p.en&&!p.ko;
   $("oneEn").textContent=p.en||(none?"연주곡이라 가사가 없어요":"(영어 가사가 없어요)");$("oneKo").textContent=p.ko||(none?"연주곡이라 가사가 없어요":"(한글 가사가 없어요)");
   $("lyrNoRow").hidden=!none;$("lyrBothRow").hidden=none;$("copyEn").disabled=!p.en;$("copyKo").disabled=!p.ko}
 $("toVocal").onclick=()=>{$("vocal").value="female";save();renderOne();renderYT();$("aiNote").textContent="";toast("여성 보컬 곡으로 바꿨어요")};
@@ -1073,7 +1208,7 @@ function makeBatch(){
   }
   const mins=n*(parseFloat($("avg").value)||3.2);
   $("batchMeta").textContent=`${n}곡 · 약 ${Math.round(mins)}분`;
-  $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}</span></summary>
+  $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
     ${lyrBlocks(s,"batch:"+i)}
     <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     <div class="row" style="margin-top:8px"><button class="btn ghost small" data-bcopy="${i}">복사</button><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
