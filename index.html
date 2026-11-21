@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611212028";
+  var APP_VERSION = "202611212031";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -280,9 +280,9 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 <nav class="quick" aria-label="바로가기">
   <span class="quick-lab">바로가기</span>
   <a href="https://suno.com/create" target="suno" rel="noopener">Suno<small>음악</small></a>
+  <a href="https://chatgpt.com/" target="chatgpt" rel="noopener">ChatGPT<small>글·아이디어</small></a>
   <a href="https://www.midjourney.com/imagine" target="midjourney" rel="noopener">Midjourney<small>이미지</small></a>
   <a href="https://www.capcut.com/" target="capcut" rel="noopener">CapCut<small>영상 편집</small></a>
-  <a href="https://chatgpt.com/" target="chatgpt" rel="noopener">ChatGPT<small>글·아이디어</small></a>
 </nav></header>
 
 <main>
