@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211458";
+  var APP_VERSION = "202611211502";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -161,6 +161,9 @@ summary{cursor:pointer;font-weight:600}
 .lyrics .lab{font-family:var(--body);font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--brass)}
 .lyrics .none{font-family:var(--body);font-size:13.5px;color:var(--muted)}
 pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cal-head b{font-family:var(--display);font-size:20px}
+.cal .cell.off{cursor:default;background:transparent;border-style:dashed;color:var(--muted)}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 .cal .wd{text-align:center;font-size:11.5px;font-weight:600;color:var(--muted);padding:2px 0}
 .cal .wd.sun{color:var(--bad)}
@@ -391,7 +394,12 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
         <label style="flex:1 1 160px">시작일<input type="date" id="planStart"></label>
         <div class="meta" id="planProgress" style="flex:1 1 160px"></div>
       </div>
-      <div class="cal" id="planCal" role="grid" aria-label="30일 일정 달력"></div>
+      <div class="cal-head">
+        <button type="button" class="btn ghost small" id="calPrev" aria-label="이전 달">◀</button>
+        <b id="calTitle"></b>
+        <button type="button" class="btn ghost small" id="calNext" aria-label="다음 달">▶</button>
+      </div>
+      <div class="cal" id="planCal" role="grid" aria-label="한 달 일정 달력"></div>
       <div class="cal-legend meta"><span><i class="dot up"></i>업로드 날 (아침 7시)</span><span><i class="dot done"></i>완료</span><span><i class="dot today"></i>오늘</span></div>
       <div id="planList"></div>
     </div>
@@ -767,15 +775,26 @@ function planDays(){
   }
   return{p,start,days,up};
 }
+let calMonth=null; // {y,m} month shown in the calendar
 function renderPlan(){
   const {start,days,up}=planDays();$("planStart").value=start;
   if(planSel==null||planSel>=days.length){const ti=days.findIndex(x=>x.today);planSel=ti>=0?ti:0}
-  const lead=days[0].wd;let html="일월화수목금토".split("").map((w,k)=>`<div class="wd${k===0?" sun":""}">${w}</div>`).join("");
-  html+='<div class="blank"></div>'.repeat(lead);
-  html+=days.map(x=>{const first=x.i===0||x.d.getDate()===1;
-    return `<button type="button" class="cell${x.topic?" up":""}${x.done?" done":""}${x.today?" today":""}" data-sel="${x.i}" aria-selected="${x.i===planSel}" aria-label="${x.d.getMonth()+1}월 ${x.d.getDate()}일${x.topic?" 업로드":""}${x.done?" 완료":""}">
-      <span class="n">${first?`<small>${x.d.getMonth()+1}/</small>`:""}${x.d.getDate()}</span>
-      <span class="tag">${x.topic?"▶ 7시":x.wd===0?"휴식":""}</span></button>`}).join("");
+  const first=days[0].d,last=days[days.length-1].d;
+  const minM=first.getFullYear()*12+first.getMonth(),maxM=last.getFullYear()*12+last.getMonth();
+  if(!calMonth){const d=days[planSel].d;calMonth={y:d.getFullYear(),m:d.getMonth()}}
+  let cm=calMonth.y*12+calMonth.m;if(cm<minM)cm=minM;if(cm>maxM)cm=maxM;calMonth={y:Math.floor(cm/12),m:cm%12};
+  $("calTitle").textContent=`${calMonth.y}년 ${calMonth.m+1}월`;
+  $("calPrev").disabled=cm<=minM;$("calNext").disabled=cm>=maxM;
+  const byDate={};days.forEach(x=>byDate[ymd(x.d)]=x);
+  const mFirst=new Date(calMonth.y,calMonth.m,1),nDays=new Date(calMonth.y,calMonth.m+1,0).getDate(),t=todayStr();
+  let html="일월화수목금토".split("").map((w,k)=>`<div class="wd${k===0?" sun":""}">${w}</div>`).join("");
+  html+='<div class="blank"></div>'.repeat(mFirst.getDay());
+  for(let dd=1;dd<=nDays;dd++){
+    const d=new Date(calMonth.y,calMonth.m,dd),x=byDate[ymd(d)],isToday=ymd(d)===t;
+    if(!x){html+=`<div class="cell off${isToday?" today":""}" aria-label="${calMonth.m+1}월 ${dd}일 (계획 없음)"><span class="n">${dd}</span><span class="tag"></span></div>`;continue}
+    html+=`<button type="button" class="cell${x.topic?" up":""}${x.done?" done":""}${x.today?" today":""}" data-sel="${x.i}" aria-selected="${x.i===planSel}" aria-label="${calMonth.m+1}월 ${dd}일${x.topic?" 업로드":""}${x.done?" 완료":""}">
+      <span class="n">${dd}</span><span class="tag">${x.topic?"▶ 7시":x.wd===0?"휴식":""}</span></button>`;
+  }
   $("planCal").innerHTML=html;
   const x=days[planSel];const tp=x.topic?`${MOODS[x.topic.mood].ko} · ${PLACES[x.topic.place].ko} · ${STYLES[x.topic.style].ko}${x.topic.long?" (2시간)":""}`:"";
   $("planList").innerHTML=`<div class="day${x.topic?" up":""}${x.done?" done":""}" style="border-bottom:none">
@@ -786,8 +805,10 @@ function renderPlan(){
     </div>`;
   $("planProgress").textContent=`30일 중 ${days.filter(d=>d.done).length}일 완료 · 업로드 ${up}편 계획`;
 }
+$("calPrev").onclick=()=>{const cm=calMonth.y*12+calMonth.m-1;calMonth={y:Math.floor(cm/12),m:cm%12};renderPlan()};
+$("calNext").onclick=()=>{const cm=calMonth.y*12+calMonth.m+1;calMonth={y:Math.floor(cm/12),m:cm%12};renderPlan()};
 $("planCal").addEventListener("click",e=>{const c=e.target.closest("[data-sel]");if(!c)return;planSel=+c.dataset.sel;renderPlan()});
-$("planStart").addEventListener("change",async()=>{planSel=null;const p=planDoc();await Store.put({...p,start:$("planStart").value,done:{}})});
+$("planStart").addEventListener("change",async()=>{planSel=null;calMonth=null;const p=planDoc();await Store.put({...p,start:$("planStart").value,done:{}})});
 $("planList").addEventListener("change",async e=>{const c=e.target.closest("[data-day]");if(!c)return;const p=planDoc();
   await Store.put({...p,start:p.start||$("planStart").value,done:{...(p.done||{}),[c.dataset.day]:c.checked}})});
 $("planList").addEventListener("click",e=>{const b=e.target.closest("[data-topic]");if(!b)return;const tp=TOPICS[+b.dataset.topic];
