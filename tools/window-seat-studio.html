@@ -1,0 +1,725 @@
+<title>Window Seat Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working desk — sticky tab bar, one tool per view, outputs as copyable "receipt" blocks */
+:root{
+  --bg:#EDF0EF; --surface:#FFFFFF; --sunk:#E2E7E6; --ink:#1D2A2E; --muted:#5B6A6E; --line:#CDD5D4;
+  --lamp:#A9620B; --lamp-soft:#F6E7CF; --night:#2D4573; --night-soft:#DDE4F2; --day:#9A6B00; --day-soft:#F7ECC8;
+  --good:#2E7D4F; --warn:#A86500; --bad:#B0413E;
+  --f-display:"Gowun Batang", "Nanum Myeongjo", Georgia, serif;
+  --f-body:"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111719; --surface:#192124; --sunk:#0D1214; --ink:#E4EAEA; --muted:#93A2A5; --line:#2B373A;
+  --lamp:#E7A64B; --lamp-soft:#3A2A14; --night:#9DB4E8; --night-soft:#1E2A44; --day:#E4C15E; --day-soft:#3A3115;
+  --good:#6CC08F; --warn:#E7A64B; --bad:#E57F7A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111719; --surface:#192124; --sunk:#0D1214; --ink:#E4EAEA; --muted:#93A2A5; --line:#2B373A;
+  --lamp:#E7A64B; --lamp-soft:#3A2A14; --night:#9DB4E8; --night-soft:#1E2A44; --day:#E4C15E; --day-soft:#3A3115;
+  --good:#6CC08F; --warn:#E7A64B; --bad:#E57F7A; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding-block:14px 6px}
+.brand h1{font-family:var(--f-display);font-size:1.5rem;margin:0;letter-spacing:.01em}
+.brand .sub{color:var(--muted);font-size:.85rem}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:0;scrollbar-width:none}
+nav.tabs a{flex:none;padding:10px 14px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;font-weight:500;font-size:.92rem}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-color:var(--lamp)}
+nav.tabs a:focus-visible{outline:2px solid var(--lamp);outline-offset:-2px}
+main{padding-block:24px 64px}
+section.view{display:grid;gap:20px}
+h2{font-family:var(--f-display);font-size:1.35rem;margin:0;text-wrap:balance}
+h3{font-size:1rem;margin:0;font-weight:700}
+.lead{color:var(--muted);margin:4px 0 0;max-width:65ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:500}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
+textarea{font-family:var(--f-mono);font-size:.82rem;resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--lamp);outline-offset:1px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:max-content;max-width:100%}
+.seg button{border:0;border-radius:0;background:transparent;color:var(--muted);padding:8px 14px}
+.seg button[aria-pressed="true"].night{background:var(--night-soft);color:var(--night)}
+.seg button[aria-pressed="true"].day{background:var(--day-soft);color:var(--day)}
+button{font:inherit;font-size:.88rem;font-weight:500;cursor:pointer;border-radius:7px;padding:8px 14px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button.primary{background:var(--lamp);border-color:var(--lamp);color:var(--surface)}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:6px 8px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.out{position:relative;background:var(--sunk);border:1px dashed var(--line);border-radius:8px;padding:12px 14px;font-family:var(--f-mono);font-size:.8rem;white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto;min-width:0}
+.out-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.out-head h3{font-size:.9rem}
+.copy{font-size:.78rem;padding:4px 10px}
+.chip{display:inline-block;font-size:.74rem;font-weight:700;padding:2px 9px;border-radius:999px;letter-spacing:.02em;white-space:nowrap}
+.chip.night{background:var(--night-soft);color:var(--night)}
+.chip.day{background:var(--day-soft);color:var(--day)}
+.chip.s0{background:var(--sunk);color:var(--muted)}
+.chip.s1,.chip.s2,.chip.s3{background:var(--lamp-soft);color:var(--lamp)}
+.chip.s4{background:var(--night-soft);color:var(--night)}
+.chip.s5{background:transparent;color:var(--good);border:1px solid var(--good)}
+.chip.good{color:var(--good);border:1px solid var(--good)}
+.chip.warn{color:var(--warn);border:1px solid var(--warn)}
+.chip.bad{color:var(--bad);border:1px solid var(--bad)}
+.tbl{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.74rem;color:var(--muted);font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.week{display:grid;gap:8px}
+.item{display:grid;grid-template-columns:86px 1fr auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.item .date{font-variant-numeric:tabular-nums;font-size:.84rem;color:var(--muted);line-height:1.3}
+.item .date b{display:block;color:var(--ink);font-size:.95rem}
+.item .t{min-width:0}
+.item .t div{overflow-wrap:anywhere}
+.item.done{opacity:.6}
+@media (max-width:520px){.item{grid-template-columns:64px 1fr}.item .acts{grid-column:1/-1;justify-content:flex-start}}
+.meter{display:grid;gap:6px}
+.bar{height:10px;border-radius:999px;background:var(--sunk);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--lamp);border-radius:999px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.stat .k{font-size:.76rem;color:var(--muted)}
+.stat .v{font-size:1.35rem;font-weight:700;font-variant-numeric:tabular-nums}
+.note{font-size:.84rem;color:var(--muted);margin:0}
+.empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:8px}
+.status{font-size:.82rem;color:var(--muted)}
+.today{border-left:4px solid var(--lamp)}
+ul.recs{margin:0;padding-left:1.1rem;display:grid;gap:6px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:.85rem;z-index:20}
+@media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1>Window Seat Studio</h1><span class="sub">창가 카페 채널 운영실 · ☀️ 낮 어쿠스틱 / 🌙 밤 재즈</span></div>
+    <nav class="tabs" aria-label="도구">
+      <a href="#plan">① 기획 생성</a>
+      <a href="#time">② 타임스탬프</a>
+      <a href="#schedule">③ 업로드 일정</a>
+      <a href="#log">④ 성과 기록·분석</a>
+      <a href="#keywords">⑤ 키워드 노트</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ① PLAN -->
+<section class="view" id="v-plan">
+  <div><h2>이번 영상 기획 한 번에 만들기</h2><p class="lead">장르·테마·길이를 고르면 Suno 프롬프트, 곡 제목, 유튜브 제목, 썸네일 문구, 설명란, 해시태그, 배경 이미지 프롬프트가 한꺼번에 나옵니다. 마음에 안 들면 <b>다시 섞기</b>를 누르세요.</p></div>
+  <div class="panel">
+    <div class="seg" role="group" aria-label="장르">
+      <button id="g-jazz" class="night" aria-pressed="true">🌙 카페 재즈</button>
+      <button id="g-acoustic" class="day" aria-pressed="false">☀️ 감성 어쿠스틱</button>
+    </div>
+    <div class="form">
+      <label>테마(장면)<select id="p-theme"></select></label>
+      <label>용도<select id="p-use"></select></label>
+      <label>길이<select id="p-len">
+        <option value="60">1시간</option><option value="90" selected>1시간 30분</option><option value="120">2시간</option><option value="180">3시간</option>
+      </select></label>
+      <label>곡 평균 길이(분)<input id="p-avg" type="number" min="2" max="8" step="0.5" value="3.5"></label>
+    </div>
+    <div class="row">
+      <button class="primary" id="p-gen">기획 만들기</button>
+      <button id="p-shuffle">다시 섞기</button>
+      <button id="p-to-schedule">일정에 추가</button>
+      <button id="p-ai" hidden>✨ Claude로 제목·일기 다듬기</button>
+      <span class="status" id="p-status"></span>
+    </div>
+  </div>
+  <div id="p-results" class="grid2"></div>
+</section>
+
+<!-- ② TIMESTAMPS -->
+<section class="view" id="v-time" hidden>
+  <div><h2>타임스탬프 자동 계산</h2><p class="lead">음악 파일을 순서대로 고르면 곡 길이를 읽어 설명란용 타임스탬프를 만듭니다. 파일은 이 브라우저 안에서만 읽고 어디에도 올리지 않습니다. 파일 이름 앞 번호(01_, 02_)는 자동으로 지웁니다.</p></div>
+  <div class="panel">
+    <div class="form">
+      <label>음악 파일 (여러 개 선택)<input id="t-files" type="file" accept="audio/*" multiple></label>
+      <label>크로스페이드(초)<input id="t-xf" type="number" min="0" max="10" step="0.5" value="3"></label>
+    </div>
+    <label>또는 직접 입력 (한 줄에 하나: <code>곡 제목 3:25</code>)<textarea id="t-manual" rows="6">Steam over the Cup 3:12
+First Customer 3:40
+Window Seat 2:58</textarea></label>
+    <div class="row"><button class="primary" id="t-calc">계산하기</button><span class="status" id="t-status"></span></div>
+  </div>
+  <div class="panel"><div class="out-head"><h3>설명란에 붙일 타임스탬프</h3><button class="copy" data-copy="t-out">복사</button></div><div class="out" id="t-out">계산하기를 누르면 여기에 나옵니다.</div><p class="note" id="t-total"></p></div>
+</section>
+
+<!-- ③ SCHEDULE -->
+<section class="view" id="v-schedule" hidden>
+  <div class="spread"><div><h2>업로드 일정</h2><p class="lead">상태를 눌러 단계를 넘기세요: 기획 → 음악 → 이미지 → 편집 → 예약완료 → 게시. 업로드는 화·목·토 저녁 9시 기준입니다.</p></div></div>
+  <div class="panel today" id="s-today"></div>
+  <div class="panel">
+    <div class="spread"><h3>일정 추가</h3><span class="status" id="s-status"></span></div>
+    <div class="form">
+      <label>날짜<input id="s-date" type="date"></label>
+      <label>장르<select id="s-genre"><option value="jazz">🌙 재즈</option><option value="acoustic">☀️ 어쿠스틱</option></select></label>
+      <label style="grid-column:span 2">제목/테마<input id="s-title" placeholder="예: 눈 오는 밤 창가 재즈 1시간 30분"></label>
+    </div>
+    <div class="row"><button class="primary" id="s-add">추가</button><button id="s-month">이 날짜부터 4주 자동 채우기</button></div>
+  </div>
+  <div id="s-list" class="week"><div class="empty">일정을 불러오는 중…</div></div>
+</section>
+
+<!-- ④ LOG -->
+<section class="view" id="v-log" hidden>
+  <div><h2>성과 기록과 다음 콘텐츠 추천</h2><p class="lead">매주 일요일, 유튜브 스튜디오 → 분석 → 각 영상의 숫자를 옮겨 적으세요. 기록이 쌓이면 무엇이 통하는지, 다음에 무엇을 만들지 자동으로 정리합니다.</p></div>
+  <div class="panel">
+    <h3>수익화 조건까지</h3>
+    <div class="form"><label>현재 구독자 수<input id="l-subs" type="number" min="0" placeholder="0"></label></div>
+    <div class="meter"><div class="spread"><span>구독자</span><span id="m-subs-t" class="status"></span></div><div class="bar"><i id="m-subs"></i></div></div>
+    <div class="meter"><div class="spread"><span>공개 시청시간 (기록한 영상 합계)</span><span id="m-hours-t" class="status"></span></div><div class="bar"><i id="m-hours"></i></div></div>
+  </div>
+  <div class="stats" id="l-stats"></div>
+  <div class="panel">
+    <div class="spread"><h3>영상 성과 입력</h3><span class="status" id="l-status"></span></div>
+    <div class="form">
+      <label>업로드일<input id="l-date" type="date"></label>
+      <label>장르<select id="l-genre"><option value="jazz">🌙 재즈</option><option value="acoustic">☀️ 어쿠스틱</option></select></label>
+      <label>테마<select id="l-theme"></select></label>
+      <label>길이(분)<input id="l-len" type="number" min="1" value="90"></label>
+      <label style="grid-column:1/-1">제목<input id="l-title"></label>
+      <label>노출수<input id="l-imp" type="number" min="0"></label>
+      <label>노출 클릭률 %<input id="l-ctr" type="number" min="0" step="0.1"></label>
+      <label>조회수<input id="l-views" type="number" min="0"></label>
+      <label>평균 시청 시간(분)<input id="l-avd" type="number" min="0" step="0.1"></label>
+      <label>시청시간(시간)<input id="l-hours" type="number" min="0" step="0.1"></label>
+      <label>구독 증가<input id="l-subgain" type="number"></label>
+      <label>검색 유입 %<input id="l-search" type="number" min="0" max="100" step="1"></label>
+      <label>메모<input id="l-memo" placeholder="썸네일 B안 사용 등"></label>
+    </div>
+    <div class="row"><button class="primary" id="l-save">저장</button><button id="l-cancel" hidden>수정 취소</button></div>
+  </div>
+  <div class="panel"><h3>영상별 진단</h3><div class="tbl" id="l-table"><div class="empty">아직 기록이 없습니다. 첫 영상을 올리고 3일 뒤 숫자를 입력하세요.</div></div></div>
+  <div class="grid2">
+    <div class="panel"><h3>잘된 점과 고칠 점</h3><ul class="recs" id="l-insights"><li>기록이 3개 이상 쌓이면 분석이 나옵니다.</li></ul></div>
+    <div class="panel"><h3>다음 콘텐츠 추천</h3><ul class="recs" id="l-next"><li>기록이 쌓이면 성과가 좋은 테마를 바탕으로 추천합니다.</li></ul><div class="row"><button id="l-ai" hidden>✨ Claude에게 분석 받기</button></div><div class="out" id="l-ai-out" hidden></div></div>
+  </div>
+  <div class="panel"><div class="out-head"><h3>AI 챗봇용 주간 분석 프롬프트</h3><button class="copy" data-copy="l-prompt">복사</button></div><div class="out" id="l-prompt"></div></div>
+</section>
+
+<!-- ⑤ KEYWORDS -->
+<section class="view" id="v-keywords" hidden>
+  <div><h2>키워드 노트</h2><p class="lead">매주 일요일 유튜브 검색창 자동완성, Google Trends, vidIQ에서 찾은 표현을 적어 두세요. 제목을 만들 때 여기서 골라 씁니다.</p></div>
+  <div class="panel">
+    <div class="form">
+      <label style="grid-column:span 2">키워드<input id="k-word" placeholder="예: 카페에서 틀기 좋은 재즈"></label>
+      <label>장르<select id="k-genre"><option value="jazz">🌙 재즈</option><option value="acoustic">☀️ 어쿠스틱</option><option value="both">공통</option></select></label>
+      <label>출처<select id="k-src"><option>유튜브 자동완성</option><option>Google Trends</option><option>vidIQ</option><option>경쟁 채널</option><option>댓글</option></select></label>
+      <label>경쟁도<select id="k-comp"><option value="낮음">낮음</option><option value="보통" selected>보통</option><option value="높음">높음</option></select></label>
+    </div>
+    <div class="row"><button class="primary" id="k-add">추가</button><span class="status" id="k-status"></span></div>
+    <div class="row"><a href="https://trends.google.com/trends/explore?geo=KR&gprop=youtube&q=%EC%B9%B4%ED%8E%98%20%EC%9E%AC%EC%A6%88" target="_blank" rel="noopener">Google Trends (유튜브 검색) 열기 ↗</a></div>
+  </div>
+  <div class="panel"><div class="tbl" id="k-list"><div class="empty">키워드를 불러오는 중…</div></div></div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- data banks ---------- */
+const BASE = {
+  jazz: [
+    ["J1 아침 카페 재즈","Instrumental cafe jazz, warm Rhodes electric piano, soft brushed drums, gentle walking upright bass, mellow jazz guitar comping, relaxed swing, 85 BPM, cozy coffee shop atmosphere, smooth and unobtrusive, warm analog recording, clean balanced mix, no vocals"],
+    ["J2 오후 보사노바","Instrumental bossa nova jazz, nylon string guitar, soft brushed snare, light shaker, upright bass, airy flute melody, relaxed 120 BPM, sunny afternoon cafe, breezy and bright, gentle dynamics, no vocals"],
+    ["J3 밤 피아노 트리오","Instrumental jazz piano trio ballad, soft solo piano melody, quiet upright bass, light brushed drums, slow 70 BPM, late night empty cafe, intimate and calm, minimal arrangement, no vocals"],
+    ["J4 황혼의 색소폰","Instrumental smooth cafe jazz, soft breathy tenor saxophone melody, warm piano chords, upright bass, light brush drums, medium swing 95 BPM, golden hour, elegant and calm, not too busy, no vocals"],
+    ["J5 브런치 기타 트리오","Instrumental mellow jazz guitar trio, clean hollow-body guitar melody, upright bass, soft drums, laid-back 90 BPM, Sunday brunch cafe, warm and friendly, smooth background music, no vocals"]
+  ],
+  acoustic: [
+    ["A1 아침 햇살 핑거스타일","Instrumental acoustic fingerstyle guitar, warm steel-string guitar, soft piano pads, gentle light percussion, 90 BPM, peaceful morning, sunlight through the window, hopeful and calm, intimate recording, no vocals"],
+    ["A2 여행 어쿠스틱","Instrumental acoustic folk, strummed acoustic guitar, ukulele, light hand claps, soft glockenspiel accents, 105 BPM, road trip, bright and carefree, feel-good, no vocals"],
+    ["A3 힐링 피아노와 기타","Instrumental acoustic healing music, soft piano and nylon guitar duet, warm cello, slow 72 BPM, gentle and comforting, resting after a long day, peaceful, no vocals"],
+    ["A4 비 오는 오후","Instrumental acoustic ballad, nylon guitar arpeggios, soft upright piano, subtle strings, 78 BPM, rainy afternoon, nostalgic and cozy, warm and quiet, no vocals"],
+    ["A5 봄 소풍","Instrumental acoustic pop, acoustic guitar, mandolin, soft bass, light cajon, 100 BPM, spring picnic in the park, warm and sunny, cheerful but gentle, no vocals"]
+  ]
+};
+const VARIANTS = ["그대로","slightly slower","in a minor key","in a major key","with soft vibraphone","with gentle strings","with warm cello","sparser arrangement"];
+const THEMES = [
+  {id:"winter-night", ko:"눈 오는 밤", short:"겨울 창가", en:"snowy winter night", mood:"snow falling outside the window, warm and cozy", img:"snow falling outside, warm lamp light, night", words:["Snowfall","First Snow","Frosted Glass","Woolen Scarf","Quiet Snow","Silver Night","Cocoa Steam","Winter Lamp"]},
+  {id:"christmas", ko:"크리스마스", short:"Christmas Café", en:"Christmas", mood:"festive Christmas cafe mood, very subtle sleigh bells, warm and joyful", img:"small Christmas tree, fairy lights, snow outside", words:["Fairy Lights","Gingerbread","Holly Window","Silent Snow","Red Ribbon","Candlelight","December Wish","Pine & Cinnamon"]},
+  {id:"year-end", ko:"연말 저녁", short:"연말의 재즈", en:"year-end evening", mood:"reflective year-end evening, warm and hopeful", img:"evening, candles, city lights in the distance", words:["Last Page","Old Year","Midnight Bells","Thank You Note","Calendar Ends","Warm Goodbye","New Light","Countdown Slow"]},
+  {id:"rain", ko:"비 오는 날", short:"비 오는 날 카페", en:"rainy day", mood:"rainy day, raindrops on the window, cozy and nostalgic", img:"rain drops on the glass, grey sky, wet street", words:["Raindrops","Wet Pavement","Umbrella Stand","Grey Window","Puddle Light","Drizzle","Soft Rain","Misty Glass"]},
+  {id:"morning", ko:"아침 햇살", short:"오늘의 첫 잔", en:"early morning", mood:"fresh early morning, soft sunlight", img:"morning sunlight through the window, fresh croissant", words:["First Cup","Morning Light","Open Sign","Fresh Bread","Sunrise Steam","Early Bird","Dew Window","Hello Morning"]},
+  {id:"afternoon", ko:"나른한 오후", short:"Slow Afternoon", en:"lazy afternoon", mood:"lazy sunny afternoon, relaxed", img:"afternoon sunlight, plants, open book", words:["Lazy Sun","Afternoon Tea","Sleepy Cat","Lemon Breeze","Paper Plane","Slow Clock","Honey Light","Warm Bench"]},
+  {id:"late-night", ko:"늦은 밤", short:"늦은 밤 재즈", en:"late night", mood:"late night, quiet and intimate", img:"late night, empty cafe, single lamp, city lights", words:["Last Order","Empty Chairs","Night Owl","Moon Window","Closing Time","Dim Lamp","After Hours","Quiet Street"]},
+  {id:"brunch", ko:"주말 브런치", short:"주말 브런치", en:"weekend brunch", mood:"bright weekend brunch, friendly and warm", img:"brunch table, pancakes, sunny window", words:["Maple Syrup","Sunday Table","Pancake Stack","Orange Juice","Weekend Plan","Late Brunch","Butter & Toast","Easy Sunday"]},
+  {id:"study", ko:"공부·작업", short:"집중 1시간", en:"focused work session", mood:"steady and focused, calm, consistent energy", img:"laptop and notebook on a cafe table, warm light", words:["Deep Focus","Notebook","Pencil Notes","Steady Hands","Quiet Desk","Page by Page","Flow State","Coffee Break"]},
+  {id:"autumn", ko:"가을", short:"가을 카페", en:"autumn", mood:"autumn leaves, warm amber colors, nostalgic", img:"autumn leaves outside, amber light", words:["Maple Leaves","Amber Cup","Fallen Leaves","Sweater Weather","Chestnut","October Window","Golden Path","Harvest Moon"]},
+  {id:"spring", ko:"봄", short:"봄 소풍", en:"spring", mood:"spring breeze, cherry blossoms, light and fresh", img:"cherry blossoms outside the window, soft pastel light", words:["Cherry Blossom","Spring Breeze","Picnic Blanket","New Leaves","Pastel Sky","April Walk","Green Tea","Petal Rain"]},
+  {id:"travel", ko:"여행·드라이브", short:"Road Trip", en:"travel and road trip", mood:"open road, travel, carefree and bright", img:"car window view of the coast, sunny road", words:["Open Road","Coastal Drive","Window Down","Next Station","Map & Coffee","Seaside Town","Ticket Home","Long Way"]},
+  {id:"healing", ko:"퇴근 후 힐링", short:"오늘도 수고했어요", en:"healing after work", mood:"comforting, gentle, resting after a long day", img:"evening, warm tea, soft blanket by the window", words:["Long Day Over","Warm Tea","Soft Blanket","Deep Breath","Home Light","Gentle Rest","Take It Easy","Slow Evening"]}
+];
+const USES = {
+  jazz:[["work","작업·공부","작업할 때 듣는","Work & Study"],["store","매장·카페 BGM","카페에서 틀기 좋은","Coffee Shop BGM"],["read","독서","책 읽을 때 듣는","Reading"],["rest","휴식","쉬면서 듣는","Relaxing"]],
+  acoustic:[["rest","휴식·힐링","쉬고 싶을 때 듣는","Rest & Healing"],["travel","여행·드라이브","여행 갈 때 듣는","Travel"],["walk","산책","산책할 때 듣는","Walking"],["work","작업·공부","공부할 때 듣는","Study"]]
+};
+const COMMON_WORDS = ["Window Seat","Corner Table","Steam over the Cup","Paper Napkin","Old Bookshelf","Second Refill","Velvet Lamp","Slow Pour","Brown Sugar","Latte Art","Counter Light","Wooden Chair","Little Bell","Saucer Song","Glass Jar","Back Booth"];
+const ACOUSTIC_WORDS = ["Linen Curtain","Bicycle Bell","Wildflower","Sunny Porch","Letter Home","Meadow Path","Kite String","Postcard"];
+const STATUSES = ["기획","음악","이미지","편집","예약완료","게시"];
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let seed = Date.now() % 100000;
+function rand(){ seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+function pick(a){ return a[Math.floor(rand() * a.length)]; }
+function shuffle(a){ const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,1800); }
+function fmtTime(sec, long){ sec=Math.max(0,Math.round(sec)); const h=Math.floor(sec/3600), m=Math.floor(sec%3600/60), s=sec%60; return long?`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`:`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`; }
+function lenLabel(min){ const h=Math.floor(min/60), m=min%60; return h? (m? `${h}시간 ${m}분`:`${h}시간`) : `${m}분`; }
+function lenEn(min){ return min%60? `${(min/60).toFixed(1).replace(/\.0$/,"")} Hours` : (min===60?"1 Hour":`${min/60} Hours`); }
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const DOW = ["일","월","화","수","목","금","토"];
+function parseISO(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+async function copyText(text, el){
+  try { await navigator.clipboard.writeText(text); toast("복사했습니다"); }
+  catch { const r=document.createRange(); r.selectNodeContents(el); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("선택됨: Ctrl+C로 복사하세요"); }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-copy]"); if(!b) return;
+  const el = $(b.dataset.copy); copyText(el.innerText, el);
+});
+function themeById(id){ return THEMES.find(t=>t.id===id) || THEMES[0]; }
+
+/* ---------- routing ---------- */
+const VIEWS = ["plan","time","schedule","log","keywords"];
+function route(){
+  const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "plan";
+  VIEWS.forEach(n => { $("v-"+n).hidden = n!==v; });
+  document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href")==="#"+v ? "page":"false"));
+}
+addEventListener("hashchange", route); route();
+
+/* ---------- ① plan generator ---------- */
+let genre = "jazz", lastPlan = null, lastTimestamps = "";
+function fillThemeSelects(){
+  const opts = THEMES.map(t=>`<option value="${t.id}">${t.ko}</option>`).join("");
+  $("p-theme").innerHTML = opts; $("l-theme").innerHTML = opts;
+}
+function fillUses(){ $("p-use").innerHTML = USES[genre].map(u=>`<option value="${u[0]}">${u[1]}</option>`).join(""); }
+function setGenre(g){
+  genre = g;
+  $("g-jazz").setAttribute("aria-pressed", g==="jazz"); $("g-acoustic").setAttribute("aria-pressed", g==="acoustic");
+  fillUses();
+  if (g==="acoustic" && ["late-night","christmas","year-end"].includes($("p-theme").value)) $("p-theme").value="morning";
+  generate();
+}
+$("g-jazz").onclick = () => setGenre("jazz");
+$("g-acoustic").onclick = () => setGenre("acoustic");
+
+function buildPlan(){
+  const th = themeById($("p-theme").value);
+  const use = USES[genre].find(u=>u[0]===$("p-use").value) || USES[genre][0];
+  const minutes = +$("p-len").value, avg = Math.max(2, +$("p-avg").value || 3.5);
+  const n = Math.max(6, Math.round(minutes / (avg - 0.05)));
+  const isJazz = genre==="jazz", gKo = isJazz?"카페 재즈":"어쿠스틱", gEn = isJazz?"Cafe Jazz":"Acoustic";
+  const base = BASE[genre];
+  const prompts = base.map(([name, p]) => ({ name, text: `${p}, ${th.mood}` }));
+  const bank = shuffle([...new Set([...th.words, ...(isJazz?COMMON_WORDS:[...ACOUSTIC_WORDS, ...COMMON_WORDS.slice(0,8)])])]);
+  // energy curve: calm open → brighter middle → calm close
+  const order = isJazz ? ["J1","J5","J1","J3","J5","J4","J1","J2","J2","J5","J4","J1","J3","J4","J3","J5","J4","J1","J3","J3"]
+                       : ["A1","A3","A1","A4","A5","A2","A1","A5","A2","A1","A3","A5","A4","A2","A1","A3","A4","A1","A3","A3"];
+  const tracks = Array.from({length:n}, (_,i) => {
+    const key = i===n-1 ? (isJazz?"J3":"A3") : order[i % order.length];
+    let v = i===0 ? "그대로" : pick(VARIANTS);
+    if (i===n-1) v = "slow, gentle ending";
+    return { no:i+1, title: bank[i % bank.length] + (i>=bank.length? " II":""), key, v };
+  });
+  const L = lenLabel(minutes), LE = lenEn(minutes);
+  const titles = [
+    `[playlist] ${th.ko} 창가 카페에서 | 잔잔한 ${gKo} ${L}`,
+    `${use[2]} ${th.ko} ${gKo} ${L} | ${th.en.replace(/\b\w/g,c=>c.toUpperCase())} ${gEn}`,
+    `${th.ko}, 창가 자리에서 듣는 ${gKo} 플레이리스트`,
+    `${th.en.replace(/\b\w/g,c=>c.toUpperCase())} ${gEn} | ${LE} for ${use[3]}`,
+    `그냥 조용히 틀어두세요 ☕ ${th.ko} ${gKo} ${L}`
+  ];
+  const thumbs = [th.short, `${th.ko} ${isJazz?"재즈":"기타"}`, "그냥 틀어두세요", isJazz?"창가 자리 재즈":"창가의 햇살", use[1].split("·")[0]+" BGM"];
+  const tags = isJazz ? ["#카페재즈","#재즈플레이리스트","#카페음악","#매장음악","#작업음악","#cafejazz","#jazzplaylist"]
+                      : ["#어쿠스틱","#힐링음악","#어쿠스틱기타","#여행음악","#휴식음악","#acousticguitar","#relaxingmusic"];
+  const imgPrompt = `cozy cafe window seat, ${th.img}, cup of coffee with gentle steam, ${isJazz?"warm amber lamp, small piano in the background":"acoustic guitar leaning by the window, soft daylight"}, illustrated, painterly, soft warm colors, calm, 16:9, no text, no people`;
+  const tsBlock = lastTimestamps || tracks.map(t=>`00:00 ${t.title}`).join("\n") + "\n(② 타임스탬프 탭에서 계산하면 자동으로 바뀝니다)";
+  const desc =
+`창가 자리에 앉아 잠시 쉬어 가세요. ☕
+[오늘의 창가 일기]
+(직접 2~3줄 써 주세요. 예: ${th.ko}, 손님이 뜸해진 카페에서 사장님이 조용히 ${isJazz?"재즈":"기타 음악"}를 틀었습니다.)
+
+${use[2]} ${th.ko} ${gKo} ${L}.
+${isJazz?"일하거나 공부하거나, 그냥 틀어두고 쉬어 가세요.":"잠시 멈추고 숨 고르기 좋은 음악입니다."}
+
+🎵 Tracklist
+${tsBlock}
+
+${isJazz?"🌙 밤의 재즈":"☀️ 낮의 어쿠스틱"} – Window Seat Café는 매주 화·목·토 새로운 플레이리스트를 올립니다.
+🔔 구독하고 창가 자리를 맡아 두세요.
+
+ℹ️ All music in this video is original, created with AI tools (Suno) and curated by Window Seat Café.
+이 영상의 음악은 AI 도구로 제작하고 직접 선곡·편집한 오리지널 곡입니다.
+📩 음원 사용 문의: (비즈니스 이메일)
+
+${tags.slice(0,3).join(" ")}`;
+  const master =
+`너는 'Window Seat Café' 유튜브 채널의 기획자야.
+콘셉트: 하루 종일 문을 여는 카페. 낮=감성 어쿠스틱(휴식·여행·힐링), 밤=카페 재즈(카페·작업·공부·매장 BGM).
+이번 영상: ${th.ko} / ${gKo} / ${L} / 용도: ${use[1]}
+다음을 만들어 줘:
+1) Suno용 영어 Style 프롬프트 5개 (instrumental, 악기·BPM·분위기 포함, 아티스트명 금지)
+2) 곡 제목 ${n}개 (영어, 2~4단어, 카페 장면)
+3) 유튜브 제목 5개 (실제 검색어 포함, 과장 금지, 한국어+영어)
+4) 썸네일 문구 5개 (6자 이내 한국어 또는 3단어 이내 영어)
+5) '오늘의 창가 일기' 3줄 초안 (내가 직접 수정할 예정)
+6) 해시태그 8개`;
+  return { th, use, minutes, n, genre, prompts, tracks, titles, thumbs, tags, imgPrompt, desc, master };
+}
+
+function block(id, title, body, wide){
+  return `<div class="panel" ${wide?'style="grid-column:1/-1"':''}><div class="out-head"><h3>${title}</h3><button class="copy" data-copy="${id}">복사</button></div><div class="out" id="${id}">${esc(body)}</div></div>`;
+}
+function renderPlan(p){
+  const trackRows = p.tracks.map(t=>`<tr><td class="num">${t.no}</td><td>${esc(t.title)}</td><td>${t.key}</td><td>${esc(t.v)}</td></tr>`).join("");
+  const promptText = p.prompts.map(x=>`[${x.name}]\n${x.text}`).join("\n\n");
+  const variantNote = "곡표의 '변형'은 해당 프롬프트 끝에 \", \" 와 함께 붙이세요. 한 프롬프트로 2~3번 생성해 좋은 곡만 남깁니다.";
+  $("p-results").innerHTML =
+    block("o-prompts", `Suno 프롬프트 5개 (Style 칸에 붙여넣기)`, promptText + "\n\n" + variantNote, true) +
+    `<div class="panel" style="grid-column:1/-1"><div class="out-head"><h3>곡 구성표 · ${p.n}곡 · 약 ${lenLabel(p.minutes)}</h3><button class="copy" data-copy="o-tracks-txt">복사</button></div>
+      <div class="tbl"><table><thead><tr><th class="num">#</th><th>곡 제목</th><th>프롬프트</th><th>변형</th></tr></thead><tbody>${trackRows}</tbody></table></div>
+      <div id="o-tracks-txt" hidden>${esc(p.tracks.map(t=>`${String(t.no).padStart(2,"0")}_${t.title}  |  ${t.key}  |  ${t.v}`).join("\n"))}</div>
+      <p class="note">Suno에서 받은 파일 이름을 <code>01_곡제목.mp3</code>처럼 바꿔 두면 타임스탬프와 스크립트가 제목을 자동으로 읽습니다.</p></div>` +
+    block("o-titles", "유튜브 제목 후보", p.titles.map((t,i)=>`${i+1}. ${t}`).join("\n")) +
+    block("o-thumbs", "썸네일 문구 (A/B 테스트용)", p.thumbs.map((t,i)=>`${String.fromCharCode(65+i)}안: ${t}`).join("\n")) +
+    block("o-img", "배경 이미지 프롬프트", p.imgPrompt) +
+    block("o-tags", "해시태그 · 태그", p.tags.join(" ") + "\n\n태그 칸: " + [p.th.ko+" "+(p.genre==="jazz"?"재즈":"음악"), p.genre==="jazz"?"카페 재즈":"어쿠스틱 기타", "플레이리스트", p.use[1], p.th.en, p.genre==="jazz"?"cafe jazz":"acoustic guitar", "relaxing music"].join(", ")) +
+    block("o-desc", "설명란 (타임스탬프 자동 반영)", p.desc, true) +
+    block("o-master", "AI 챗봇용 마스터 프롬프트 (ChatGPT·Claude 무료 버전에 붙여넣기)", p.master, true) +
+    `<div class="panel" style="grid-column:1/-1" id="o-ai-wrap" hidden><div class="out-head"><h3>✨ Claude 제안</h3><button class="copy" data-copy="o-ai">복사</button></div><div class="out" id="o-ai"></div></div>`;
+}
+let planSeed = seed;
+function generate(){ planSeed = seed; lastPlan = buildPlan(); renderPlan(lastPlan); }
+$("p-gen").onclick = () => { generate(); toast("기획을 만들었습니다"); };
+$("p-shuffle").onclick = () => { seed = (seed + 7919) % 2147483647 || 1; generate(); toast("곡 제목과 변형을 다시 섞었습니다"); };
+["p-theme","p-use","p-len","p-avg"].forEach(id => $(id).addEventListener("change", generate));
+
+/* ---------- ② timestamps ---------- */
+function cleanName(n){ return n.replace(/\.[^.]+$/,"").replace(/^\s*\d+\s*[-_.)\]]*\s*/,"").replace(/_/g," ").trim() || n; }
+function readDuration(file){
+  return new Promise(res => {
+    const url = URL.createObjectURL(file), a = new Audio();
+    a.preload = "metadata"; a.src = url;
+    a.onloadedmetadata = () => { res(a.duration); URL.revokeObjectURL(url); };
+    a.onerror = () => { res(NaN); URL.revokeObjectURL(url); };
+  });
+}
+function parseManual(text){
+  return text.split("\n").map(l=>l.trim()).filter(Boolean).map(l => {
+    const m = l.match(/^(.*?)[\s|,-]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/);
+    if(!m) return null;
+    const sec = m[4]!==undefined ? (+m[2])*3600+(+m[3])*60+(+m[4]) : (+m[2])*60+(+m[3]);
+    return { title: m[1].trim(), dur: sec };
+  });
+}
+function makeTimestamps(items, xf){
+  let t = 0; const starts = [];
+  items.forEach((it,i) => { starts.push(t); t += it.dur - (i<items.length-1 ? xf : 0); });
+  const long = t >= 3600;
+  return { text: items.map((it,i)=>`${fmtTime(starts[i], long)} ${it.title}`).join("\n"), total: t };
+}
+$("t-calc").onclick = async () => {
+  const xf = Math.max(0, +$("t-xf").value || 0);
+  const files = [...$("t-files").files].sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true}));
+  let items;
+  if (files.length){
+    $("t-status").textContent = `${files.length}개 파일 길이 읽는 중…`;
+    const durs = await Promise.all(files.map(readDuration));
+    const bad = files.filter((_,i)=>!isFinite(durs[i]));
+    if (bad.length){ $("t-status").textContent = `길이를 읽지 못한 파일: ${bad.map(f=>f.name).join(", ")}. mp3나 m4a로 바꿔 다시 시도하세요.`; return; }
+    items = files.map((f,i)=>({ title: cleanName(f.name), dur: durs[i] }));
+  } else {
+    const parsed = parseManual($("t-manual").value);
+    const badLine = parsed.findIndex(x=>!x);
+    if (badLine>=0){ $("t-status").textContent = `${badLine+1}번째 줄 형식을 확인하세요. 예: Window Seat 3:25`; return; }
+    items = parsed;
+  }
+  if (!items.length){ $("t-status").textContent = "파일을 고르거나 곡 목록을 입력하세요."; return; }
+  const r = makeTimestamps(items, xf);
+  $("t-out").textContent = r.text;
+  $("t-total").textContent = `총 ${items.length}곡 · 영상 길이 약 ${fmtTime(r.total, true)} (크로스페이드 ${xf}초 반영) · ① 기획 탭의 설명란에도 자동 반영됐습니다.`;
+  $("t-status").textContent = "";
+  lastTimestamps = r.text; if (lastPlan){ lastPlan = {...lastPlan}; generateKeepSeed(); }
+};
+function generateKeepSeed(){ const s = seed; seed = planSeed; lastPlan = buildPlan(); renderPlan(lastPlan); seed = s; }
+
+/* ---------- DB wiring ---------- */
+let db = null, canWrite = true, schedule = [], videos = [], keywords = [], channel = {};
+function setOffline(msg){
+  ["s-status","l-status","k-status"].forEach(id => $(id).textContent = msg);
+}
+function errMsg(e){
+  if (e && e.code === "quota_exceeded") return "저장 공간이 가득 찼습니다. 오래된 기록을 지우세요.";
+  if (e && e.code === "invalid_argument") { canWrite = false; return "이 화면에서는 저장 권한이 없습니다(보기 전용)."; }
+  return "저장하지 못했습니다. 잠시 뒤 다시 시도하세요.";
+}
+function watch(coll, order, onData, emptyEl){
+  let timer = setTimeout(() => { if (emptyEl) $(emptyEl).innerHTML = `<div class="empty">데이터에 아직 연결되지 않았습니다. 네트워크를 확인하세요.</div>`; }, 10000);
+  return db.collection(coll).orderBy(order).onSnapshot(s => {
+    if (!s.metadata.fromCache) clearTimeout(timer);
+    onData(s.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, e => { clearTimeout(timer); if (emptyEl) $(emptyEl).innerHTML = `<div class="empty">데이터를 불러오지 못했습니다 (${esc(e.code)}).</div>`; });
+}
+
+/* ---------- ③ schedule ---------- */
+function weekStart(d){ const x = new Date(d); const day = (x.getDay()+6)%7; x.setDate(x.getDate()-day); return x; }
+const ROUTINE = {1:"음악 생성: 다음 주 영상 3개 분량", 2:"곡 선별·순서 정하기·합치기", 3:"배경 이미지·썸네일 3개", 4:"영상 렌더링 3개", 5:"제목·설명·타임스탬프 → 예약 업로드", 6:"쇼츠 3개 제작·예약", 0:"성과 기록(④) · 키워드 정리(⑤) · 다음 주 주제 결정"};
+function renderSchedule(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const next = schedule.filter(x => parseISO(x.date) >= today && (x.status ?? 0) < 5)[0];
+  const behind = schedule.filter(x => parseISO(x.date) < today && (x.status ?? 0) < 5).length;
+  $("s-today").innerHTML = `<div class="spread"><h3>오늘 (${today.getMonth()+1}/${today.getDate()} ${DOW[today.getDay()]}) 할 일</h3>${behind?`<span class="chip warn">밀린 영상 ${behind}개</span>`:""}</div>
+    <div>📋 루틴: <b>${ROUTINE[today.getDay()]}</b></div>
+    <div>${next ? `⏭ 다음 업로드: <b>${next.date.slice(5).replace("-","/")} (${DOW[parseISO(next.date).getDay()]}) 21:00</b> · <span class="chip ${next.genre==="jazz"?"night":"day"}">${next.genre==="jazz"?"🌙 재즈":"☀️ 어쿠스틱"}</span> ${esc(next.title)} · 현재 단계 <b>${STATUSES[next.status??0]}</b>` : "⏭ 예정된 업로드가 없습니다. 아래에서 4주 일정을 자동으로 채우세요."}</div>`;
+  if (!schedule.length){ $("s-list").innerHTML = `<div class="empty">아직 일정이 없습니다. 날짜를 고르고 <b>4주 자동 채우기</b>를 누르세요.</div>`; return; }
+  const groups = {};
+  schedule.forEach(x => { const k = iso(weekStart(parseISO(x.date))); (groups[k] ||= []).push(x); });
+  $("s-list").innerHTML = Object.entries(groups).map(([wk, items]) => {
+    const ws = parseISO(wk);
+    return `<h3 style="margin-top:8px">${ws.getMonth()+1}월 ${ws.getDate()}일 주</h3>` + items.map(x => {
+      const d = parseISO(x.date), st = x.status ?? 0;
+      return `<div class="item ${st===5?"done":""}">
+        <div class="date"><b>${d.getMonth()+1}/${d.getDate()}</b>${DOW[d.getDay()]} 21:00</div>
+        <div class="t"><span class="chip ${x.genre==="jazz"?"night":"day"}">${x.genre==="jazz"?"🌙 재즈":"☀️ 어쿠스틱"}</span><div>${esc(x.title)}</div></div>
+        <div class="row acts"><button class="chip s${st}" data-step="${x.id}" title="눌러서 다음 단계로" ${canWrite?"":"disabled"}>${STATUSES[st]} ▸</button><button class="ghost" data-del-s="${x.id}" aria-label="삭제" ${canWrite?"":"disabled"}>삭제</button></div>
+      </div>`;
+    }).join("");
+  }).join("");
+}
+document.addEventListener("click", async e => {
+  const st = e.target.closest("[data-step]"), del = e.target.closest("[data-del-s]");
+  if (!db) return;
+  try {
+    if (st){ const x = schedule.find(s=>s.id===st.dataset.step); await db.doc("schedule/"+x.id).update({ status: ((x.status??0)+1) % STATUSES.length }); }
+    if (del){ const x = schedule.find(s=>s.id===del.dataset.delS);
+      if (del.dataset.confirm !== "1"){ del.dataset.confirm="1"; del.textContent="정말 삭제?"; setTimeout(()=>{ if(del.isConnected){del.dataset.confirm="";del.textContent="삭제";} },3000); return; }
+      await db.doc("schedule/"+x.id).delete(); }
+  } catch(err){ $("s-status").textContent = errMsg(err); }
+});
+$("s-add").onclick = async () => {
+  if (!db) return;
+  const date = $("s-date").value, title = $("s-title").value.trim();
+  if (!date || !title){ $("s-status").textContent = "날짜와 제목을 입력하세요."; return; }
+  try { await db.collection("schedule").add({ date, genre: $("s-genre").value, title, status: 0 }); $("s-title").value=""; toast("일정을 추가했습니다"); }
+  catch(err){ $("s-status").textContent = errMsg(err); }
+};
+$("s-month").onclick = async () => {
+  if (!db) return;
+  const start = $("s-date").value ? parseISO($("s-date").value) : new Date();
+  // 화·토 = 재즈, 목 = 어쿠스틱
+  const jazzThemes = ["winter-night","christmas","late-night","christmas","rain","study","year-end","study"];
+  const acoThemes = ["morning","healing","travel","morning"];
+  const have = new Set(schedule.map(x=>x.date));
+  const out = []; const d = new Date(start); let i = 0, ji = 0, ai = 0;
+  while (out.length < 12 && i < 40){
+    if ([2,4,6].includes(d.getDay()) && !have.has(iso(d))){
+      const g = d.getDay()===4 ? "acoustic" : "jazz";
+      const t = themeById(g==="jazz" ? jazzThemes[ji++ % jazzThemes.length] : acoThemes[ai++ % acoThemes.length]);
+      const len = g==="jazz" && ji > 4 ? "2시간" : "1시간 30분";
+      out.push({ date: iso(d), genre: g, title: `${t.ko} ${g==="jazz"?"카페 재즈":"어쿠스틱"} ${len}`, status: 0 });
+    }
+    d.setDate(d.getDate()+1); i++;
+  }
+  try { for (const x of out) await db.collection("schedule").add(x); toast(`${out.length}개 일정을 채웠습니다`); }
+  catch(err){ $("s-status").textContent = errMsg(err); }
+};
+$("p-to-schedule").onclick = async () => {
+  if (!db || !lastPlan){ toast("저장소에 연결되지 않았습니다"); return; }
+  const today = new Date(); const d = new Date(today);
+  const want = lastPlan.genre==="acoustic" ? [4] : [2,6];
+  const taken = new Set(schedule.map(x=>x.date));
+  for (let i=0;i<60;i++){ d.setDate(d.getDate()+1); if (want.includes(d.getDay()) && !taken.has(iso(d))) break; }
+  try { await db.collection("schedule").add({ date: iso(d), genre: lastPlan.genre, title: lastPlan.titles[0], status: 1 });
+        toast(`${d.getMonth()+1}/${d.getDate()} 일정에 추가했습니다`); }
+  catch(err){ $("p-status").textContent = errMsg(err); }
+};
+
+/* ---------- ④ log & analysis ---------- */
+let editing = null;
+const num = id => { const v = $(id).value; return v===""? null : +v; };
+function diag(v, med){
+  const out = [];
+  if (v.ctr!=null){ if (v.ctr < 2.5) out.push(["bad","클릭률 낮음 → 썸네일·제목 교체"]); else if (v.ctr >= 6) out.push(["good","클릭률 좋음"]); }
+  if (v.avd!=null){ if (v.avd < 4) out.push(["bad","초반 이탈 → 첫 곡·음량 점검"]); else if (v.avd >= 12) out.push(["good","오래 들음"]); }
+  if (v.imp!=null && med.imp && v.imp < med.imp*0.5) out.push(["warn","노출 적음 → 검색 키워드 보강"]);
+  if (v.search!=null && v.search >= 40) out.push(["good","검색으로 찾음 → 같은 키워드로 시리즈"]);
+  if (!out.length) out.push(["warn","보통 · 1주 뒤 다시 확인"]);
+  return out;
+}
+const median = a => { const b=a.filter(x=>x!=null).sort((x,y)=>x-y); return b.length? b[Math.floor(b.length/2)] : null; };
+const avg = a => { const b=a.filter(x=>x!=null); return b.length? b.reduce((s,x)=>s+x,0)/b.length : null; };
+const score = v => (v.ctr??0) * (v.avd??0);
+function renderLog(){
+  const subs = channel.subs ?? 0, hours = videos.reduce((s,v)=>s+(v.hours||0),0);
+  if (document.activeElement !== $("l-subs")) $("l-subs").value = channel.subs ?? "";
+  $("m-subs").style.width = Math.min(100, subs/10)+"%"; $("m-subs-t").textContent = `${subs.toLocaleString()} / 1,000명`;
+  $("m-hours").style.width = Math.min(100, hours/40)+"%"; $("m-hours-t").textContent = `${Math.round(hours).toLocaleString()} / 4,000시간`;
+  const by = g => videos.filter(v=>v.genre===g);
+  const f1 = x => x==null? "–" : x.toFixed(1);
+  $("l-stats").innerHTML = [
+    ["기록한 영상", videos.length+"개"],
+    ["평균 클릭률", f1(avg(videos.map(v=>v.ctr)))+"%"],
+    ["평균 시청 시간", f1(avg(videos.map(v=>v.avd)))+"분"],
+    ["🌙 재즈 평균 시청시간", f1(avg(by("jazz").map(v=>v.hours)))+"시간"],
+    ["☀️ 어쿠스틱 평균 시청시간", f1(avg(by("acoustic").map(v=>v.hours)))+"시간"]
+  ].map(([k,v])=>`<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  if (!videos.length){
+    $("l-table").innerHTML = `<div class="empty">아직 기록이 없습니다. 첫 영상을 올리고 3일 뒤 숫자를 입력하세요.</div>`;
+  } else {
+    const med = { imp: median(videos.map(v=>v.imp)) };
+    const sorted = [...videos].sort((a,b)=>b.date.localeCompare(a.date));
+    $("l-table").innerHTML = `<table><thead><tr><th>날짜</th><th>영상</th><th class="num">노출</th><th class="num">CTR</th><th class="num">조회</th><th class="num">평균시청</th><th class="num">시청시간</th><th>진단</th><th></th></tr></thead><tbody>${
+      sorted.map(v=>`<tr><td>${esc(v.date.slice(5))}</td><td><span class="chip ${v.genre==="jazz"?"night":"day"}">${v.genre==="jazz"?"재즈":"어쿠스틱"}</span> ${esc(themeById(v.theme).ko)}<div class="note">${esc(v.title)}</div></td>
+      <td class="num">${v.imp?.toLocaleString() ?? "–"}</td><td class="num">${v.ctr ?? "–"}%</td><td class="num">${v.views?.toLocaleString() ?? "–"}</td><td class="num">${v.avd ?? "–"}분</td><td class="num">${v.hours ?? "–"}</td>
+      <td>${diag(v,med).map(([c,t])=>`<span class="chip ${c}">${t}</span>`).join(" ")}</td>
+      <td><button class="ghost" data-edit-v="${v.id}">수정</button><button class="ghost" data-del-v="${v.id}">삭제</button></td></tr>`).join("")
+    }</tbody></table>`;
+  }
+  // insights
+  const ins = [], nxt = [];
+  if (videos.length >= 3){
+    const ranked = [...videos].sort((a,b)=>score(b)-score(a));
+    const top = ranked.slice(0, Math.max(1, Math.ceil(videos.length*0.2)));
+    ins.push(`상위 영상: <b>${top.map(v=>esc(themeById(v.theme).ko)+" "+(v.genre==="jazz"?"재즈":"어쿠스틱")).join(", ")}</b> (클릭률 × 평균 시청 시간 기준)`);
+    const j = avg(by("jazz").map(v=>v.hours)), a = avg(by("acoustic").map(v=>v.hours));
+    if (j!=null && a!=null){
+      if (a >= j*1.5) ins.push("☀️ 어쿠스틱이 재즈보다 영상당 시청시간이 1.5배 이상 → 어쿠스틱 비중을 50%까지 늘려 보세요.");
+      else if (j >= a*1.5) ins.push("🌙 재즈가 압도적 → 재즈 80%로 집중, 어쿠스틱은 시즌 특집으로만.");
+      else ins.push("두 장르 성과가 비슷합니다 → 지금 비율(재즈 7 : 어쿠스틱 3) 유지.");
+    }
+    const lens = {}; videos.forEach(v=>{ const k=v.len>=150?"3시간":v.len>=105?"2시간":v.len>=75?"1시간 30분":"1시간"; (lens[k] ||= []).push(v.hours||0); });
+    const bestLen = Object.entries(lens).map(([k,a])=>[k,avg(a)]).sort((x,y)=>y[1]-x[1])[0];
+    if (Object.keys(lens).length>1) ins.push(`영상당 시청시간이 가장 긴 길이: <b>${bestLen[0]}</b>`);
+    const lowCtr = videos.filter(v=>v.ctr!=null && v.ctr<2.5).length;
+    if (lowCtr >= Math.ceil(videos.length/2)) ins.push("절반 이상이 클릭률 2.5% 미만 → 썸네일 글자를 줄이고 장면을 더 분명하게. 유튜브 썸네일 A/B 테스트를 켜세요.");
+    // next recs
+    const themeScore = {}; videos.forEach(v=>{ const k=v.genre+"|"+v.theme; (themeScore[k] ||= []).push(score(v)); });
+    const bestThemes = Object.entries(themeScore).map(([k,a])=>[k,avg(a)]).sort((x,y)=>y[1]-x[1]).slice(0,3);
+    bestThemes.forEach(([k]) => {
+      const [g, t] = k.split("|"), th = themeById(t), alt = shuffle(THEMES.filter(x=>x.id!==t)).slice(0,1)[0];
+      nxt.push(`<b>${th.ko} ${g==="jazz"?"재즈":"어쿠스틱"}</b> 후속편 → 길이를 늘린 버전 또는 「${th.ko} × ${alt.ko}」 조합`);
+    });
+    const used = new Set(videos.map(v=>v.theme));
+    const fresh = THEMES.filter(t=>!used.has(t.id)).slice(0,2);
+    fresh.forEach(t => nxt.push(`아직 안 해 본 테마 실험: <b>${t.ko}</b> (반응 비교용 1편)`));
+  }
+  $("l-insights").innerHTML = ins.length ? ins.map(x=>`<li>${x}</li>`).join("") : "<li>기록이 3개 이상 쌓이면 분석이 나옵니다.</li>";
+  $("l-next").innerHTML = nxt.length ? nxt.map(x=>`<li>${x}</li>`).join("") : "<li>기록이 쌓이면 성과가 좋은 테마를 바탕으로 추천합니다.</li>";
+  $("l-prompt").textContent =
+`아래는 내 유튜브 플레이리스트 채널(Window Seat Café: 낮 어쿠스틱 / 밤 카페 재즈) 영상 성과야.
+성과 상위 3개의 공통점, 고쳐야 할 점 3가지, 다음 주에 만들 영상 주제 3개(장르·테마·길이·제목 포함)를 추천해 줘.
+과장된 표현 없이, 초보자가 바로 실행할 수 있게.
+
+현재 구독자: ${subs}명 / 누적 시청시간: ${Math.round(hours)}시간
+업로드일 | 장르 | 테마 | 길이(분) | 제목 | 노출 | CTR% | 조회 | 평균시청(분) | 시청시간 | 구독증가 | 검색유입%
+${videos.map(v=>[v.date,v.genre==="jazz"?"재즈":"어쿠스틱",themeById(v.theme).ko,v.len,v.title,v.imp,v.ctr,v.views,v.avd,v.hours,v.subgain,v.search].map(x=>x??"").join(" | ")).join("\n") || "(아직 기록 없음)"}`;
+}
+$("l-save").onclick = async () => {
+  if (!db) return;
+  const rec = { date: $("l-date").value, genre: $("l-genre").value, theme: $("l-theme").value, len: num("l-len"), title: $("l-title").value.trim(),
+    imp: num("l-imp"), ctr: num("l-ctr"), views: num("l-views"), avd: num("l-avd"), hours: num("l-hours"), subgain: num("l-subgain"), search: num("l-search"), memo: $("l-memo").value.trim() };
+  if (!rec.date || !rec.title){ $("l-status").textContent = "업로드일과 제목은 꼭 입력하세요."; return; }
+  try {
+    if (editing) await db.doc("videos/"+editing).set(rec); else await db.collection("videos").add(rec);
+    toast(editing? "수정했습니다":"저장했습니다"); editing = null; $("l-cancel").hidden = true; $("l-save").textContent = "저장";
+    ["l-title","l-imp","l-ctr","l-views","l-avd","l-hours","l-subgain","l-search","l-memo"].forEach(id=>$(id).value="");
+    $("l-status").textContent = "";
+  } catch(err){ $("l-status").textContent = errMsg(err); }
+};
+$("l-cancel").onclick = () => { editing=null; $("l-cancel").hidden=true; $("l-save").textContent="저장"; };
+document.addEventListener("click", async e => {
+  const ed = e.target.closest("[data-edit-v]"), dl = e.target.closest("[data-del-v]");
+  if (ed){ const v = videos.find(x=>x.id===ed.dataset.editV); editing = v.id;
+    const map = {"l-date":"date","l-genre":"genre","l-theme":"theme","l-len":"len","l-title":"title","l-imp":"imp","l-ctr":"ctr","l-views":"views","l-avd":"avd","l-hours":"hours","l-subgain":"subgain","l-search":"search","l-memo":"memo"};
+    Object.entries(map).forEach(([id,k])=>$(id).value = v[k] ?? "");
+    $("l-save").textContent = "수정 저장"; $("l-cancel").hidden = false; $("l-date").scrollIntoView({behavior:"smooth", block:"center"}); }
+  if (dl && db){
+    if (dl.dataset.confirm !== "1"){ dl.dataset.confirm="1"; dl.textContent="정말?"; setTimeout(()=>{ if(dl.isConnected){dl.dataset.confirm="";dl.textContent="삭제";} },3000); return; }
+    try { await db.doc("videos/"+dl.dataset.delV).delete(); } catch(err){ $("l-status").textContent = errMsg(err); } }
+});
+let subsTimer;
+$("l-subs").addEventListener("input", () => { clearTimeout(subsTimer); subsTimer = setTimeout(async () => {
+  if (!db) return; const v = num("l-subs"); if (v === (channel.subs ?? null)) return;
+  try { await db.doc("meta/channel").set({ ...channel, subs: v ?? 0 }); } catch(err){ $("l-status").textContent = errMsg(err); }
+}, 700); });
+
+/* ---------- ⑤ keywords ---------- */
+function renderKeywords(){
+  if (!keywords.length){ $("k-list").innerHTML = `<div class="empty">아직 키워드가 없습니다. 위에서 첫 키워드를 추가하세요.</div>`; return; }
+  const gl = {jazz:"🌙 재즈", acoustic:"☀️ 어쿠스틱", both:"공통"};
+  $("k-list").innerHTML = `<table><thead><tr><th>키워드</th><th>장르</th><th>출처</th><th>경쟁도</th><th>추가일</th><th></th></tr></thead><tbody>${
+    [...keywords].sort((a,b)=>(b.added||"").localeCompare(a.added||"")).map(k=>`<tr><td><b>${esc(k.word)}</b></td><td>${gl[k.genre]||""}</td><td>${esc(k.src)}</td>
+    <td><span class="chip ${k.comp==="낮음"?"good":k.comp==="높음"?"bad":"warn"}">${esc(k.comp)}</span></td><td>${esc((k.added||"").slice(5))}</td>
+    <td><button class="ghost" data-del-k="${k.id}">삭제</button></td></tr>`).join("")}</tbody></table>`;
+}
+$("k-add").onclick = async () => {
+  if (!db) return; const word = $("k-word").value.trim();
+  if (!word){ $("k-status").textContent = "키워드를 입력하세요."; return; }
+  try { await db.collection("keywords").add({ word, genre:$("k-genre").value, src:$("k-src").value, comp:$("k-comp").value, added: iso(new Date()) }); $("k-word").value=""; $("k-status").textContent=""; toast("추가했습니다"); }
+  catch(err){ $("k-status").textContent = errMsg(err); }
+};
+document.addEventListener("click", async e => { const d = e.target.closest("[data-del-k]"); if (d && db){ try{ await db.doc("keywords/"+d.dataset.delK).delete(); }catch(err){ $("k-status").textContent = errMsg(err); } } });
+
+/* ---------- Claude (optional) ---------- */
+async function setupSample(){
+  const sample = await window.claude?.use?.("sample");
+  if (!sample) return;
+  $("p-ai").hidden = false; $("l-ai").hidden = false;
+  $("p-ai").onclick = async () => {
+    if (!lastPlan) return; const btn = $("p-ai"); btn.disabled = true;
+    $("o-ai-wrap").hidden = false; $("o-ai").textContent = "생각하는 중…";
+    try {
+      await sample(`너는 유튜브 플레이리스트 채널 'Window Seat Café'(낮=감성 어쿠스틱, 밤=카페 재즈)의 기획자다.
+이번 영상: 장르=${lastPlan.genre==="jazz"?"카페 재즈":"감성 어쿠스틱"}, 테마=${lastPlan.th.ko}, 길이=${lenLabel(lastPlan.minutes)}, 용도=${lastPlan.use[1]}.
+아래를 한국어로 작성해라. 과장·낚시 표현 금지, 실제 사람들이 검색할 자연스러운 표현.
+1) 유튜브 제목 5개 (한국어 위주, 영어 병기 가능, 60자 이내)
+2) 썸네일 문구 5개 (한국어 6자 이내 또는 영어 3단어 이내)
+3) '오늘의 창가 일기' 3줄 초안 (카페 사장의 시점, 담백하게)
+번호 목록만 출력.`, { modelTier:"quick", onText: ({text}) => { $("o-ai").textContent = text; } });
+    } catch(e){ $("o-ai").textContent = e?.code==="not_granted" ? "Claude 사용이 허용되지 않았습니다. 위의 마스터 프롬프트를 챗봇에 붙여 넣어 쓰세요." : "지금은 Claude에 연결할 수 없습니다. 잠시 뒤 다시 시도하세요."; if (e?.code==="not_granted") $("p-ai").hidden = true; }
+    finally { btn.disabled = false; }
+  };
+  $("l-ai").onclick = async () => {
+    const btn = $("l-ai"); btn.disabled = true; const out = $("l-ai-out"); out.hidden = false; out.textContent = "분석하는 중…";
+    try { await sample($("l-prompt").textContent, { modelTier:"default", onText: ({text}) => { out.textContent = text; } }); }
+    catch(e){ out.textContent = e?.code==="not_granted" ? "Claude 사용이 허용되지 않았습니다. 위 프롬프트를 복사해 챗봇에 붙여 넣으세요." : "지금은 Claude에 연결할 수 없습니다."; }
+    finally { btn.disabled = false; }
+  };
+}
+
+/* ---------- boot ---------- */
+fillThemeSelects(); fillUses(); $("p-theme").value = "winter-night"; generate();
+const todayISO = iso(new Date()); $("s-date").value = todayISO; $("l-date").value = todayISO;
+renderLog();
+(async () => {
+  db = await window.claude?.use?.("db");
+  if (!db){
+    setOffline("저장소에 연결되지 않아 일정·기록은 이 화면에서 저장되지 않습니다. 기획 생성과 타임스탬프는 그대로 쓸 수 있습니다.");
+    $("s-list").innerHTML = `<div class="empty">저장소에 연결되지 않았습니다. claude.ai에 로그인한 상태로 열어 주세요.</div>`;
+    $("k-list").innerHTML = `<div class="empty">저장소에 연결되지 않았습니다.</div>`;
+    renderSchedule(); return;
+  }
+  try { const user = await window.claude.use("user"); const w = await user?.can?.("data.write"); if (w === false){ canWrite = false; setOffline("보기 전용입니다. 저장은 채널 운영자만 할 수 있습니다."); } } catch {}
+  watch("schedule","date", d => { schedule = d; renderSchedule(); }, "s-list");
+  watch("videos","date", d => { videos = d; renderLog(); }, "l-table");
+  watch("keywords","word", d => { keywords = d; renderKeywords(); }, "k-list");
+  db.doc("meta/channel").onSnapshot(s => { channel = s.exists ? s.data() : {}; renderLog(); }, () => {});
+})();
+setupSample();
+</script>
