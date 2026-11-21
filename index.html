@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211815";
+  var APP_VERSION = "202611211823";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -216,7 +216,10 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .genre-box{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);display:flex;flex-direction:column;gap:4px}
 .genre-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .genre-text{font-family:var(--mono);font-size:12.5px;line-height:1.55;overflow-wrap:anywhere}
-.flash{animation:flash 1.2s ease-out}
+.flash{animation:flash 1.4s ease-out}
+.excl-text{font-size:12px}
+.excl-text span{font-family:var(--mono)}
+::selection{background:var(--accent);color:var(--on-accent)}
 @keyframes flash{0%{box-shadow:0 0 0 3px var(--accent);border-color:var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.flash{animation:none}}
 .folded .lyr-lines,.folded .lyr-edit{display:none}
@@ -973,14 +976,14 @@ function renderLib(){
 const libOpen=new Set();
 function libCard(s){return `<div class="card" data-id="${h(s.id)}">
     <div class="row" style="justify-content:space-between;align-items:flex-start">
-      <div style="min-width:0"><h4>${h(s.title)}</h4><div class="meta">${h(s.titleKo)} · ${h(STYLES[s.style]?.ko||s.style)} · ${h(s.bpm)} BPM · ${h(s.key)} · ${h(VOCAL_KO[s.vocal]||"")}</div></div>
+      <div style="min-width:0"><h4 class="ttl">${h(s.title)}</h4><div class="meta">${h(s.titleKo)} · ${h(STYLES[s.style]?.ko||s.style)} · ${h(s.bpm)} BPM · ${h(s.key)} · ${h(VOCAL_KO[s.vocal]||"")}</div></div>
       ${s.status==="picked"?'<span class="pill ok">영상용</span>':s.status==="made"?'<span class="pill">생성함</span>':'<span class="pill v">프롬프트</span>'}
     </div>
     <div class="row">
       <select data-act="status" aria-label="진행 상태" style="width:auto">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${s.status===k?" selected":""}>${v}</option>`).join("")}</select>
       <label class="check"><input type="checkbox" data-act="paid"${s.paid?" checked":""}> 유료 플랜에서 생성</label>
     </div>
-    <details><summary>영어 가사 · 한글 가사 보기</summary>${lyrBlocks(s,"lib:"+s.id)}</details>
+    <details class="lyr-details"><summary>영어 가사 · 한글 가사 보기</summary>${lyrBlocks(s,"lib:"+s.id)}</details>
     <details><summary>프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     ${sunoBarHTML("lib:"+s.id,s)}<div class="row"><button class="btn ghost small" data-act="doc">파일로 저장</button><button class="btn danger small" data-act="del">삭제</button></div>
   </div>`}
@@ -1410,21 +1413,34 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-lfold]");i
   const f=!w.classList.contains("folded");setFold(w,f);if(w.id==="lyrGridOne"){try{localStorage.setItem("slowcup-lyrfold",f?"1":"")}catch(err){}}});
 try{if(localStorage.getItem("slowcup-lyrfold")==="1")setFold($("lyrGridOne"),true)}catch(e){}
 
+// Select (highlight) the on-screen text that was just copied.
+function selectEl(el){if(!el)return;try{const d=el.closest("details");if(d&&!d.open)d.open=true;const r=document.createRange();r.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}catch(e){}
+  el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");el.scrollIntoView({behavior:"smooth",block:"nearest"})}
+function sunoTarget(btn,k){
+  const src=btn.dataset.src;
+  if(src==="one")return $({lyrics:"oneLyr",style:"oneStyle",title:"oneTitle",exclude:"oneEx"}[k]);
+  const box=btn.closest(src.startsWith("batch:")?"details":".card");if(!box)return null;const s=songBySrc(src);
+  if(k==="title")return box.querySelector(".ttl");
+  if(k==="style")return box.querySelector(".genre-text");
+  if(k==="exclude")return box.querySelector(".excl-text span");
+  const boxes=box.querySelectorAll(".lyr-lines");return boxes[s&&s.lang&&s.lang!=="en"&&boxes[1]?1:0]||box.querySelector(".lyr-lines");
+}
+
 // ---------- Suno copy bar ----------
 function sunoBarHTML(src,song){
   const inst=song.vocal==="inst"||song.vocal==="scat",st=STYLES[song.style];
   const b=(k,lab,sub)=>`<button type="button" data-suno="${k}" data-src="${h(src)}">${lab}<small>${sub}</small></button>`;
   return `<div class="suno-bar" style="margin-top:8px"><div class="suno-head"><b>Suno에 바로 넣기</b><a class="suno-open" href="https://suno.com/create" target="suno" rel="noopener">Suno 만들기 화면 열기 ↗</a></div>
-    <div class="genre-box"><div class="genre-top"><span class="pill v">${h(st?st.ko:song.style)}</span><span class="meta">${h(song.bpm)} BPM · ${h(song.key)} · ${h(VOCAL_KO[song.vocal]||"")}</span></div><div class="genre-text">${h(song.styleText)}</div></div>
+    <div class="genre-box"><div class="genre-top"><span class="pill v">${h(st?st.ko:song.style)}</span><span class="meta">${h(song.bpm)} BPM · ${h(song.key)} · ${h(VOCAL_KO[song.vocal]||"")}</span></div><div class="genre-text">${h(song.styleText)}</div><div class="excl-text meta">제외: <span>${h(song.exclude||EXCLUDE)}</span></div></div>
     <div class="suno-steps">${b("lyrics","① 가사 복사","Lyrics 칸")}${b("style","② 장르 복사","Style of Music 칸")}${b("title","③ 제목 복사","Song Title 칸")}${b("exclude","④ 제외 복사","Exclude Styles 칸")}</div>
     ${inst?'<p class="meta" style="margin:0">연주곡이에요. Suno에서 <b>Instrumental</b>도 켜 주세요.</p>':""}</div>`;
 }
 function sunoText(s,k){return k==="lyrics"?s.lyrics:k==="style"?s.styleText:k==="title"?s.title:(s.exclude||EXCLUDE)}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-suno]");if(!b)return;const s=songBySrc(b.dataset.src);if(!s)return;
   const t=sunoText(s,b.dataset.suno);if(!t){toast("복사할 내용이 없어요");return}
-  if(b.dataset.suno==="style"){const g=b.closest(".suno-bar")?.querySelector(".genre-box")||$("oneStyle");if(g){g.classList.remove("flash");void g.offsetWidth;g.classList.add("flash")}}
-  navigator.clipboard.writeText(t).then(()=>{b.classList.add("done");toast({lyrics:"가사를 복사했어요 → Lyrics 칸에 붙여 넣기",style:"장르를 복사했어요 → Style of Music 칸에 붙여 넣기",title:"제목을 복사했어요 → Song Title 칸에 붙여 넣기",exclude:"제외 스타일을 복사했어요 → Exclude Styles 칸에 붙여 넣기"}[b.dataset.suno])})
-    .catch(()=>{copy(t)})});
+  const tgt=sunoTarget(b,b.dataset.suno);
+  navigator.clipboard.writeText(t).then(()=>{b.classList.add("done");selectEl(tgt);toast({lyrics:"가사를 복사했어요 → Lyrics 칸에 붙여 넣기",style:"장르를 복사했어요 → Style of Music 칸에 붙여 넣기",title:"제목을 복사했어요 → Song Title 칸에 붙여 넣기",exclude:"제외 스타일을 복사했어요 → Exclude Styles 칸에 붙여 넣기"}[b.dataset.suno])})
+    .catch(()=>{selectEl(tgt);toast("자동 복사가 막혀 있어요. 선택된 글을 직접 복사해 주세요")})});
 function resetSunoOne(){document.querySelectorAll("#sunoOne [data-suno]").forEach(b=>b.classList.remove("done"));
   $("sunoInst").innerHTML=(one.vocal==="inst"||one.vocal==="scat")?"연주곡이에요. Suno에서 <b>Custom</b>과 <b>Instrumental</b>을 켜고, 버튼을 차례로 눌러 같은 이름의 칸에 붙여 넣으세요.":"Suno에서 <b>Custom</b>을 켜고, 버튼을 차례로 눌러 같은 이름의 칸에 붙여 넣으세요."}
 
@@ -1438,7 +1454,7 @@ function saveBatch(){try{localStorage.setItem(BKEY,JSON.stringify(batch))}catch(
 function loadBatch(){try{const a=JSON.parse(localStorage.getItem(BKEY)||"[]");if(Array.isArray(a))batch=a.filter(x=>x&&x.title&&x.style)}catch(e){batch=[]}}
 let trackSrc="batch"; // which songs the upload tab uses: "batch" (last made) or "picked" (library)
 function renderBatchList(){
-  $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
+  $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. <span class="ttl">${h(s.title)}</span> <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
     ${lyrBlocks(s,"batch:"+i)}
     <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     ${sunoBarHTML("batch:"+i,s)}<div class="row" style="margin-top:8px"><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
