@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211833";
+  var APP_VERSION = "202611211942";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -971,7 +971,7 @@ function renderLib(){
     g.songs.sort((a,b)=>(a.groupIdx??0)-(b.groupIdx??0)||(a.created||"").localeCompare(b.created||""));
     const pickedN=g.songs.filter(x=>x.status==="picked").length;
     return `<details class="folder" ${libOpen.has(g.id)?"open":""} data-g="${h(g.id)}"><summary><span class="fname">📁 ${h(g.name)}</span><span class="meta">${g.songs.length}곡${pickedN?` · 영상용 ${pickedN}`:""}</span></summary>
-      <div class="row folder-acts"><button class="btn small" data-gact="docs" data-g="${h(g.id)}">곡마다 파일로 저장 (${g.songs.length}개)</button><button class="btn ghost small" data-gact="file" data-g="${h(g.id)}">한 파일로 모아 저장</button><button class="btn ghost small" data-gact="pick" data-g="${h(g.id)}">모두 영상용으로 선택</button></div>
+      <div class="row folder-acts"><button class="btn small" data-gact="docs" data-g="${h(g.id)}">곡마다 파일로 저장 (${g.songs.length}개)</button><button class="btn ghost small" data-gact="file" data-g="${h(g.id)}">한 파일로 모아 저장</button><button class="btn ghost small" data-gact="pick" data-g="${h(g.id)}">모두 영상용으로 선택</button><button class="btn danger small" data-gact="delg" data-g="${h(g.id)}">폴더 삭제</button></div>
       <div class="block" style="gap:10px">${g.songs.map(libCard).join("")}</div></details>`}).join("");
 }
 const libOpen=new Set();
@@ -1049,6 +1049,11 @@ async function saveTextFile(name,text){
   copy(text);return "copied";
 }
 $("libList").addEventListener("click",async e=>{const b=e.target.closest("[data-gact]");if(!b)return;const songs=libGroupSongs(b.dataset.g);if(!songs.length)return;
+  if(b.dataset.gact==="delg"){
+    if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent=`한 번 더 누르면 ${songs.length}곡 삭제`;setTimeout(()=>{if(b.isConnected){b.classList.remove("armed");b.textContent="폴더 삭제"}},4000);return}
+    lastDeleted=songs.map(x=>({...x}));libOpen.delete(b.dataset.g);
+    for(const x of songs)await Store.del(x.id);
+    $("undoMsg").textContent=`폴더를 삭제했어요 (${songs.length}곡)`;undoKind="folder";showUndo();return}
   if(b.dataset.gact==="pick"){trackSrc="picked";for(const x of songs)if(x.status!=="picked")await Store.put({...x,status:"picked"});toast(`${songs.length}곡을 영상용으로 골랐어요. 업로드 탭에 들어갔어요`);return}
   if(b.dataset.gact==="docs"){const files=songs.map((x,i)=>({name:songFileName(x,i),data:docxFor(songParas(x))}));
     const c=new Date(songs[0].created||Date.now()),pad=n=>String(n).padStart(2,"0");
@@ -1380,7 +1385,7 @@ function startEdit(btn){
     const v=ta.value.replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+$/,"")).join("\n").trim();
     undoStack.push({src,lyrics:s.lyrics,lyricsEn:s.lyricsEn,lyricsKo:s.lyricsKo});if(undoStack.length>30)undoStack.shift();
     const next=lang==="en"?{lyricsEn:v}:{lyricsKo:v};const tmp={...s,...next};next.lyrics=rebuildSuno(tmp);close();
-    await applyLyrics(src,s,next);$("undoMsg").textContent="가사를 수정했어요";showUndo();toast("저장했어요")};
+    await applyLyrics(src,s,next);undoKind="lyrics";$("undoMsg").textContent="가사를 수정했어요";showUndo();toast("저장했어요")};
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-ledit]");if(b)startEdit(b)});
 async function applyLyrics(src,s,next){
@@ -1391,7 +1396,10 @@ async function applyLyrics(src,s,next){
 }
 let undoTimer=null;
 function showUndo(){$("undoBar").hidden=false;clearTimeout(undoTimer);undoTimer=setTimeout(()=>{$("undoBar").hidden=true},6000)}
-$("undoBtn").onclick=async()=>{const u=undoStack.pop();$("undoBar").hidden=true;if(!u)return;const s=songBySrc(u.src);if(!s)return;
+let lastDeleted=null,undoKind="lyrics";
+$("undoBtn").onclick=async()=>{if(undoKind==="folder"){undoKind="lyrics";$("undoBar").hidden=true;const a=lastDeleted||[];lastDeleted=null;for(const x of a)await Store.put(x);if(a.length)toast(`${a.length}곡을 되살렸어요`);return}
+  return undoLyrics()};
+const undoLyrics=async()=>{const u=undoStack.pop();$("undoBar").hidden=true;if(!u)return;const s=songBySrc(u.src);if(!s)return;
   await applyLyrics(u.src,s,{lyrics:u.lyrics,lyricsEn:u.lyricsEn,lyricsKo:u.lyricsKo});toast("되돌렸어요")};
 function checkHTML(r){if(!r)return"";return r.ok?`<span class="chk-ok" title="예시 가사·보관함·이번 목록과 같은 줄 0개, 3단어 이상 겹침 0개 (${r.lines}줄 검사)">✓ 중복 없음</span>`
   :`<span class="chk-bad" title="${h(r.bad.slice(0,5).join(" / "))}">⚠ 겹치는 줄 ${r.bad.length}개 · 다시 뽑기를 눌러 주세요</span>`}
@@ -1484,8 +1492,6 @@ function makeBatch(){
 }
 let armTimer=null;
 $("batchMake").onclick=()=>{const b=$("batchMake");
-  if(batch.length&&!batchSaved&&!b.classList.contains("armed")){b.classList.add("armed");b.textContent=`저장 안 한 ${batch.length}곡이 바뀌어요. 한 번 더 누르면 새로 만들어요`;
-    clearTimeout(armTimer);armTimer=setTimeout(batchMakeLabel,5000);return}
   clearTimeout(armTimer);makeBatch();batchSaved=false;saveBatch();batchMakeLabel();batchSaveLabel();
   saveBatchToLib().then(()=>toast(`${batch.length}곡을 만들어 보관함 새 폴더에 저장했어요. 업로드 탭에도 들어갔어요`))};
 $("batchSheet").onclick=()=>copy(["번호\t제목\t한글 제목\t스타일\tBPM\t키\t보컬\tStyle 프롬프트",...batch.map((s,i)=>[i+1,s.title,s.titleKo,STYLES[s.style].ko,s.bpm,s.key,VOCAL_KO[s.vocal],s.styleText].join("\t"))].join("\n"));
