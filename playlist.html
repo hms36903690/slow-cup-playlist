@@ -261,11 +261,12 @@ const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").val
 function makeTitle(m,p,s,used){
   const M=MOODS[m],P=PLACES[p],S=STYLES[s];
   for(let i=0;i<30;i++){
-    const idx=Math.floor(rng()*M.nEn.length);
+    let pool=M.nEn.map((_,k)=>k);if(used){used._n=used._n||new Set();const fresh=pool.filter(k=>!used._n.has(m+k));if(fresh.length)pool=fresh}
+    const idx=pick(pool);
     const n=M.nEn[idx],nk=M.nKo[idx];
     const t=pick([()=>`${pick(ADJ)} ${n}`,()=>`${n} at the ${pick(P.nEn)}`,()=>`${n} ${pick(S.forms)}`,()=>`${n}`,()=>`${pick(ADJ)} ${n} ${pick(S.forms)}`])();
     const k=pick(KO_FORM).replace("{n}",nk);
-    if(!used||!used.has(t)){used&&used.add(t);return{en:t,ko:k}}
+    if(!used||!used.has(t)){if(used){used.add(t);used._n.add(m+idx)}return{en:t,ko:k}}
   }
   return{en:M.nEn[0]+" "+rint(2,9),ko:M.nKo[0]};
 }
