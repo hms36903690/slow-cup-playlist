@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211759";
+  var APP_VERSION = "202611211804";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -190,6 +190,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .chk-ok{color:var(--good)}
 .chk-bad{color:var(--bad)}
 .lyr-lines{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;max-height:460px;overflow:auto;font-size:14.5px;line-height:1.6}
+.lyr-lines .lyr-title{font-family:var(--display);font-weight:700;font-size:17px;line-height:1.3;padding:2px 0 6px;margin-bottom:4px;border-bottom:1px solid var(--line)}
 .lyr-lines .lab{font-size:11.5px;font-weight:600;letter-spacing:.04em;color:var(--brass);margin:8px 0 2px}
 .lyr-lines .lab:first-child{margin-top:0}
 .lyr-lines .ln{display:flex;gap:6px;align-items:flex-start;justify-content:space-between;padding:2px 0;border-radius:4px}
@@ -1282,14 +1283,14 @@ const bothText=s=>{const p=lyrPair(s);return[p.en&&"[English]\n"+p.en,p.ko&&"[�
 // Lyric lines with a delete button each. Deleting removes the English line and its matching Korean line together.
 const LYR_LAB=/^\[(verse|chorus|bridge|pre-chorus|hook|intro|outro|1절|2절|3절|후렴|브릿지|english|한글 가사)[^\]]*\]$/i;
 function lyrLines(t){return String(t||"").split("\n").map(l=>l.trim()).filter(l=>l&&!/^\[.*\]$/.test(l))}
-function lyrListHTML(txt){
+function lyrListHTML(txt,title){
   if(!txt)return '<div class="none">(가사가 없어요)</div>';
-  return txt.split("\n").map(l=>{const t=l.trim();if(!t)return"";if(/^\[.*\]$/.test(t))return `<div class="lab">${h(t.slice(1,-1))}</div>`;return `<div class="ln"><span>${h(t)}</span></div>`}).join("");
+  return (title?`<div class="lyr-title">${h(title)}</div>`:"")+txt.split("\n").map(l=>{const t=l.trim();if(!t)return"";if(/^\[.*\]$/.test(t))return `<div class="lab">${h(t.slice(1,-1))}</div>`;return `<div class="ln"><span>${h(t)}</span></div>`}).join("");
 }
 function lyrBlocks(s,src){
   const p=lyrPair(s);
   if(!p.en&&!p.ko)return `<p class="meta" style="margin:8px 0 0">${NO_LYRICS}</p>`;
-  const one=(lab,txt,k)=>`<div class="block lyr-box"><div class="block-head"><h3>${lab}</h3><div class="row"><button class="btn ghost small" data-ledit="${k}" data-src="${h(src)}">수정</button>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div></div><div class="lyr-lines">${lyrListHTML(txt)}</div></div>`;
+  const one=(lab,txt,k)=>`<div class="block lyr-box"><div class="block-head"><h3>${lab}</h3><div class="row"><button class="btn ghost small" data-ledit="${k}" data-src="${h(src)}">수정</button>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div></div><div class="lyr-lines">${lyrListHTML(txt,k==="en"?s.title:(s.titleKo||s.title))}</div></div>`;
   return `<div class="lyr-wrap" style="margin-top:8px"><div class="lyr-top"><div class="row" style="gap:10px"><h3>가사</h3>${s.lyrCheck?`<span class="meta">${checkHTML(s.lyrCheck)}</span>`:""}</div><button class="btn ghost small" data-lfold>접기</button></div><div class="lyr-grid">`+one("영어 가사",p.en,"en")+one("한글 가사",p.ko,"ko")+`</div></div><div class="row" style="margin-top:8px"><button class="btn ghost small" data-lcopy="both" data-src="${h(src)}">영어 + 한글 함께 복사</button></div>`;
 }
 const undoStack=[];
@@ -1340,7 +1341,7 @@ function checkHTML(r){if(!r)return"";return r.ok?`<span class="chk-ok" title="�
   :`<span class="chk-bad" title="${h(r.bad.slice(0,5).join(" / "))}">⚠ 겹치는 줄 ${r.bad.length}개 · 다시 뽑기를 눌러 주세요</span>`}
 function updateRead(){resetSunoOne();$("lyrCheck").innerHTML=checkHTML(one.lyrCheck);const p=lyrPair(one),none=!p.en&&!p.ko;
   const inst=one.vocal==="inst"||one.vocal==="scat",emptyMsg=inst?'<div class="none">연주곡이라 가사가 없어요</div>':'<div class="none">가사가 없어요. 수정을 눌러 새로 쓰거나 다시 뽑기를 누르세요.</div>';
-  $("oneEn").innerHTML=p.en?lyrListHTML(p.en):emptyMsg;$("oneKo").innerHTML=p.ko?lyrListHTML(p.ko):emptyMsg;
+  $("oneEn").innerHTML=p.en?lyrListHTML(p.en,one.title):emptyMsg;$("oneKo").innerHTML=p.ko?lyrListHTML(p.ko,one.titleKo||one.title):emptyMsg;
   $("lyrNoRow").hidden=!(none&&inst);$("lyrBothRow").hidden=none;$("copyEn").disabled=!p.en;$("copyKo").disabled=!p.ko}
 $("toVocal").onclick=()=>{$("vocal").value="female";save();renderOne();renderYT();$("aiNote").textContent="";toast("여성 보컬 곡으로 바꿨어요")};
 function copyLyr(t,el){if(!t){toast("복사할 가사가 없어요");return}copy(t,el)}
