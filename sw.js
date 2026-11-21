@@ -1,6 +1,6 @@
 // Slow Cup Jazz service worker: keeps the app working offline after the first visit.
-const CACHE = "slowcup-v5";
-const SHELL = ["./", "index.html", "playlist.html", "manifest.webmanifest",
+const CACHE = "slowcup-v6";
+const SHELL = ["./", "index.html", "playlist.html", "manifest.webmanifest", "version.json",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -15,7 +15,7 @@ self.addEventListener("fetch", e => {
   const url = new URL(req.url);
   // App pages: try the network first so updates show up, fall back to the saved copy offline.
   if (url.origin === location.origin) {
-    e.respondWith(fetch(req).then(res => {
+    e.respondWith(fetch(req, { cache: "no-cache" }).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return res;
     }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match("index.html"))));
