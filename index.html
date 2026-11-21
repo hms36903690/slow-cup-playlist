@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211750";
+  var APP_VERSION = "202611211751";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -72,17 +72,17 @@
 /* Layout: phone-style app — sticky app bar, one screen per tab, fixed bottom tab bar; on wide screens the same column, centered */
 :root{
   --bg:#eef0ec; --surface:#f8f9f6; --ink:#1f2a28; --muted:#5d6b67; --line:#cfd6d1;
-  --accent:#1e5b55; --on-accent:#f8f9f6; --brass:#a5782c; --chip:#e1e7e3; --good:#2f7a4a; --bad:#a3412f;
+  --accent:#1e5b55; --on-accent:#f8f9f6; --brass:#a5782c; --cta:#6e4a12; --on-cta:#ffffff; --chip:#e1e7e3; --good:#2f7a4a; --bad:#a3412f;
   --display:"Gowun Batang", "Nanum Myeongjo", Georgia, serif;
   --body:"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#141a19; --surface:#1c2422; --ink:#e4ebe7; --muted:#9aa9a4; --line:#2f3b38;
-  --accent:#6fbdb3; --on-accent:#10201d; --brass:#d6a856; --chip:#25302d; --good:#6cc28c; --bad:#e08a76; color-scheme:dark}}
+  --accent:#6fbdb3; --on-accent:#10201d; --brass:#d6a856; --cta:#e3b764; --on-cta:#1a1408; --chip:#25302d; --good:#6cc28c; --bad:#e08a76; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#141a19; --surface:#1c2422; --ink:#e4ebe7; --muted:#9aa9a4; --line:#2f3b38;
-  --accent:#6fbdb3; --on-accent:#10201d; --brass:#d6a856; --chip:#25302d; --good:#6cc28c; --bad:#e08a76; color-scheme:dark}
+  --accent:#6fbdb3; --on-accent:#10201d; --brass:#d6a856; --cta:#e3b764; --on-cta:#1a1408; --chip:#25302d; --good:#6cc28c; --bad:#e08a76; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;
@@ -203,7 +203,9 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .suno-bar{border:1px solid var(--accent);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
 .suno-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .suno-head b{font-size:14px}
-.suno-head a{font-size:13px;color:var(--accent);font-weight:600}
+.suno-head a.suno-open{font-size:14px;font-weight:700;color:var(--on-cta);background:var(--cta);text-decoration:none;border-radius:8px;padding:8px 12px;white-space:nowrap;letter-spacing:.01em}
+.suno-head a.suno-open:hover{filter:brightness(1.08)}
+.suno-head a.suno-open:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .suno-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 @media (max-width:560px){.suno-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .suno-steps button{font:inherit;font-weight:600;font-size:13.5px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);border-radius:8px;padding:9px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
@@ -312,7 +314,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
       <div class="row" id="lyrNoRow" hidden><span class="meta">지금은 연주곡이라 가사가 없어요.</span><button class="btn small" id="toVocal">가사 있는 곡으로 바꾸기</button></div>
       <div class="row" id="lyrBothRow"><button class="btn ghost small" id="copyBoth">영어 + 한글 함께 복사</button></div>
       <div class="suno-bar" id="sunoOne">
-        <div class="suno-head"><b>Suno에 바로 넣기</b><a href="https://suno.com/create" target="_blank" rel="noopener">Suno 열기 ↗</a></div>
+        <div class="suno-head"><b>Suno에 바로 넣기</b><a class="suno-open" href="https://suno.com/create" target="suno" rel="noopener">Suno 만들기 화면 열기 ↗</a></div>
         <div class="suno-steps">
           <button type="button" data-suno="lyrics" data-src="one">① 가사 복사<small>Lyrics 칸</small></button>
           <button type="button" data-suno="style" data-src="one">② 장르 복사<small>Style of Music 칸</small></button>
@@ -1326,7 +1328,7 @@ try{if(localStorage.getItem("slowcup-lyrfold")==="1")setFold($("lyrGridOne"),tru
 function sunoBarHTML(src,song){
   const inst=song.vocal==="inst"||song.vocal==="scat",st=STYLES[song.style];
   const b=(k,lab,sub)=>`<button type="button" data-suno="${k}" data-src="${h(src)}">${lab}<small>${sub}</small></button>`;
-  return `<div class="suno-bar" style="margin-top:8px"><div class="suno-head"><b>Suno에 바로 넣기</b><a href="https://suno.com/create" target="_blank" rel="noopener">Suno 열기 ↗</a></div>
+  return `<div class="suno-bar" style="margin-top:8px"><div class="suno-head"><b>Suno에 바로 넣기</b><a class="suno-open" href="https://suno.com/create" target="suno" rel="noopener">Suno 만들기 화면 열기 ↗</a></div>
     <div class="genre-box"><div class="genre-top"><span class="pill v">${h(st?st.ko:song.style)}</span><span class="meta">${h(song.bpm)} BPM · ${h(song.key)} · ${h(VOCAL_KO[song.vocal]||"")}</span></div><div class="genre-text">${h(song.styleText)}</div></div>
     <div class="suno-steps">${b("lyrics","① 가사 복사","Lyrics 칸")}${b("style","② 장르 복사","Style of Music 칸")}${b("title","③ 제목 복사","Song Title 칸")}${b("exclude","④ 제외 복사","Exclude Styles 칸")}</div>
     ${inst?'<p class="meta" style="margin:0">연주곡이에요. Suno에서 <b>Instrumental</b>도 켜 주세요.</p>':""}</div>`;
