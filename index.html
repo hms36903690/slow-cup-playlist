@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211510";
+  var APP_VERSION = "202611211526";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -208,8 +208,8 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
         <label>장소 · 용도<select id="place"></select></label>
         <label>재즈 스타일<select id="style"></select></label>
         <label>보컬<select id="vocal">
-          <option value="inst">연주곡</option><option value="female">여성 보컬</option>
-          <option value="male">남성 보컬</option><option value="scat">허밍·스캣</option></select></label>
+          <option value="female" selected>여성 보컬</option><option value="male">남성 보컬</option>
+          <option value="inst">연주곡</option><option value="scat">허밍·스캣</option></select></label>
         <label>가사 언어<select id="lang">
           <option value="en" selected>영어</option><option value="ko">한국어</option><option value="mix">한국어 + 영어 후렴</option></select></label>
         <label>채널 이름<input type="text" id="channel" value="Slow Cup Jazz"></label>
@@ -266,7 +266,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
       <div class="grid">
         <label>곡 수<input type="number" id="batchN" min="2" max="40" value="13"></label>
         <label class="check" style="align-self:end"><input type="checkbox" id="batchMix" checked> 비슷한 스타일 섞기</label>
-        <label class="check" style="align-self:end"><input type="checkbox" id="batchVocal"> 보컬곡 1~2곡 섞기</label>
+        <label class="check" style="align-self:end"><input type="checkbox" id="batchVocal"> <span id="batchVocalLab">연주곡 1~2곡 섞기</span></label>
       </div>
       <div class="row">
         <button class="btn" id="batchMake">한번에 만들기</button>
@@ -535,6 +535,7 @@ fill("mood",MOODS,v=>v.ko);fill("place",PLACES,v=>v.ko);fill("style",STYLES,v=>v
 const SKEY="slowcup-settings";
 try{const s=JSON.parse(localStorage.getItem(SKEY)||"{}");for(const k in s){if($(k)){if($(k).type==="checkbox")$(k).checked=s[k];else $(k).value=s[k]}}}catch(e){}
 try{if(!localStorage.getItem("slowcup-lang-en")){$("lang").value="en";localStorage.setItem("slowcup-lang-en","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.lang="en";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("lang").value="en"}
+try{if(!localStorage.getItem("slowcup-vocal-female")){$("vocal").value="female";localStorage.setItem("slowcup-vocal-female","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.vocal="female";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("vocal").value="female"}
 function save(){try{const o={};["mood","place","style","vocal","lang","channel","count","avg","mixStyle","mixVocal"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
 const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").value,vocal:$("vocal").value,lang:$("lang").value});
 
@@ -821,7 +822,7 @@ $("planStart").addEventListener("change",async()=>{planSel=null;calMonth=null;co
 $("planList").addEventListener("change",async e=>{const c=e.target.closest("[data-day]");if(!c)return;const p=planDoc();
   await Store.put({...p,start:p.start||$("planStart").value,done:{...(p.done||{}),[c.dataset.day]:c.checked}})});
 $("planList").addEventListener("click",e=>{const b=e.target.closest("[data-topic]");if(!b)return;const tp=TOPICS[+b.dataset.topic];
-  $("mood").value=tp.mood;$("place").value=tp.place;$("style").value=tp.style;$("vocal").value="inst";
+  $("mood").value=tp.mood;$("place").value=tp.place;$("style").value=tp.style;
   save();renderOne();renderYT();go("v-create");toast("설정을 바꿨어요. 플레이리스트 앱에서도 같은 설정으로 "+(tp.long?"40":"20")+"곡을 만드세요")});
 
 // ---------- performance log ----------
@@ -1052,12 +1053,14 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-lcopy]");i
   copyLyr(k==="both"?bothText(s):lyrPair(s)[k],b.closest(".block")?.querySelector("pre"))});
 
 // ---------- batch create ----------
+function batchVocalLabel(){$("batchVocalLab").textContent=$("vocal").value==="inst"?"보컬곡 1~2곡 섞기":"연주곡 1~2곡 섞기"}
+$("vocal").addEventListener("change",batchVocalLabel);batchVocalLabel();
 let batch=[];
 function makeBatch(){
   const c=cfg(),n=Math.max(2,Math.min(40,parseInt($("batchN").value)||13));$("batchN").value=n;
   const used=new Set(),path=pick(KEY_PATH);
   const styles=$("batchMix").checked?[c.style,c.style,...NEIGHBOR[c.style]]:[c.style];
-  const vocalIdx=new Set();if($("batchVocal").checked&&c.vocal==="inst"){vocalIdx.add(Math.round(n*.5));if(n>=10)vocalIdx.add(Math.round(n*.8))}
+  const vocalIdx=new Set();if($("batchVocal").checked){vocalIdx.add(Math.round(n*.5));if(n>=10)vocalIdx.add(Math.round(n*.8))}
   batch=[];
   for(let i=0;i<n;i++){
     const st=(i===0||i===n-1)?c.style:styles[Math.floor(rng()*styles.length)];
@@ -1065,12 +1068,12 @@ function makeBatch(){
     const energy=x<.15?.3:x<.65?.35+.6*Math.sin((x-.15)/.5*Math.PI/2):.9-1.6*(x-.65);
     const bpm=Math.round(S.bpm[0]+(S.bpm[1]-S.bpm[0])*Math.max(0,Math.min(1,energy)));
     const key=i===n-1?path[0]:path[Math.floor(i/Math.ceil(n/path.length))%path.length];
-    const vocal=vocalIdx.has(i)?(rng()<.5?"female":"male"):c.vocal;
+    const vocal=vocalIdx.has(i)?(c.vocal==="inst"?(rng()<.5?"female":"male"):"inst"):c.vocal;
     batch.push(makeSong({...c,style:st,vocal},bpm,key,used));
   }
   const mins=n*(parseFloat($("avg").value)||3.2);
   $("batchMeta").textContent=`${n}곡 · 약 ${Math.round(mins)}분`;
-  $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)}${s.vocal!=="inst"?" · "+VOCAL_KO[s.vocal]:""}</span></summary>
+  $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}</span></summary>
     ${lyrBlocks(s,"batch:"+i)}
     <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     <div class="row" style="margin-top:8px"><button class="btn ghost small" data-bcopy="${i}">복사</button><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
