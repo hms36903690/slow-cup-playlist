@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611212013";
+  var APP_VERSION = "202611212020";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -444,7 +444,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
   <!-- TRANSLATE -->
   <section class="view" id="v-tr" hidden>
     <h2>유튜브 추출 · 번역</h2>
-    <p class="lead">영상 주소로 정보를 확인하고, 영상의 스크립트를 붙여 넣으면 타임스탬프를 빼고 정리한 뒤 원하는 언어로 번역합니다.</p>
+    <p class="lead">내용을 직접 입력하거나 URL에서 추출하여 50개 언어로 번역하세요.</p>
 
     <div class="panel">
       <div class="block-head"><h3>1. 영상 주소</h3></div>
