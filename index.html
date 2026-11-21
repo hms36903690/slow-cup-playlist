@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211551";
+  var APP_VERSION = "202611211556";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -189,6 +189,17 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .cal-legend .dot.today{box-shadow:inset 0 0 0 2px var(--brass)}
 .chk-ok{color:var(--good)}
 .chk-bad{color:var(--bad)}
+.lyr-lines{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;max-height:460px;overflow:auto;font-size:14.5px;line-height:1.6}
+.lyr-lines .lab{font-size:11.5px;font-weight:600;letter-spacing:.04em;color:var(--brass);margin:8px 0 2px}
+.lyr-lines .lab:first-child{margin-top:0}
+.lyr-lines .ln{display:flex;gap:6px;align-items:flex-start;justify-content:space-between;padding:2px 0;border-radius:4px}
+.lyr-lines .ln:hover{background:var(--chip)}
+.lyr-lines .ln span{min-width:0;overflow-wrap:anywhere}
+.lyr-lines .x{font:inherit;font-size:12px;line-height:1;flex:none;width:24px;height:24px;border-radius:5px;border:1px solid var(--line);background:var(--surface);color:var(--bad);cursor:pointer}
+.lyr-lines .x:hover{border-color:var(--bad)}
+.lyr-lines .none{color:var(--muted);font-size:13.5px}
+.undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
+.undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
 .toast.on{opacity:1}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -251,11 +262,11 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
       <div class="lyr-grid">
         <div class="block lyr-box">
           <div class="block-head"><h3>영어 가사</h3><button class="btn small" id="copyEn">영어 복사</button></div>
-          <pre class="out lyr" id="oneEn"></pre>
+          <div class="lyr-lines" id="oneEn"></div>
         </div>
         <div class="block lyr-box">
           <div class="block-head"><h3>한글 가사</h3><button class="btn small" id="copyKo">한글 복사</button></div>
-          <pre class="out lyr" id="oneKo"></pre>
+          <div class="lyr-lines" id="oneKo"></div>
         </div>
       </div>
       <div class="meta" id="lyrCheck"></div>
@@ -446,6 +457,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
   <button data-v="v-tr"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>번역</button>
 </div></nav>
 <div class="toast" id="toast" role="status"></div>
+<div class="undo-bar" id="undoBar" hidden><span id="undoMsg">한 줄을 삭제했어요</span><button type="button" id="undoBtn">되돌리기</button></div>
 
 <script>
 const MOODS={
@@ -1177,16 +1189,57 @@ function lyrPair(s){
   return /[가-힣]/.test(t)?{en:"",ko:t}:{en:t,ko:""};
 }
 const bothText=s=>{const p=lyrPair(s);return[p.en&&"[English]\n"+p.en,p.ko&&"[한글 가사]\n"+p.ko].filter(Boolean).join("\n\n")};
+// Lyric lines with a delete button each. Deleting removes the English line and its matching Korean line together.
+const LYR_LAB=/^\[(verse|chorus|bridge|pre-chorus|hook|intro|outro|1절|2절|3절|후렴|브릿지|english|한글 가사)[^\]]*\]$/i;
+function lyrLines(t){return String(t||"").split("\n").map(l=>l.trim()).filter(l=>l&&!/^\[.*\]$/.test(l))}
+function lyrListHTML(txt,lang,src){
+  if(!txt)return '<div class="none">(가사가 없어요)</div>';
+  let i=0;return txt.split("\n").map(l=>{const t=l.trim();if(!t)return"";if(/^\[.*\]$/.test(t))return `<div class="lab">${h(t.slice(1,-1))}</div>`;
+    const k=i++;return `<div class="ln"><span>${h(t)}</span><button type="button" class="x" data-ldel="${lang}" data-i="${k}" data-src="${h(src)}" aria-label="이 줄 삭제" title="이 줄 삭제">✕</button></div>`}).join("");
+}
 function lyrBlocks(s,src){
   const p=lyrPair(s);
   if(!p.en&&!p.ko)return `<p class="meta" style="margin:8px 0 0">${NO_LYRICS}</p>`;
-  const one=(lab,txt,k)=>`<div class="block" style="margin-top:8px"><div class="block-head"><h3>${lab}</h3>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div><pre class="out lyr">${txt?h(txt):"(가사가 없어요)"}</pre></div>`;
+  const one=(lab,txt,k)=>`<div class="block" style="margin-top:8px"><div class="block-head"><h3>${lab}</h3>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div><div class="lyr-lines">${lyrListHTML(txt,k,src)}</div></div>`;
   return one("영어 가사",p.en,"en")+one("한글 가사",p.ko,"ko")+`<div class="row" style="margin-top:8px"><button class="btn ghost small" data-lcopy="both" data-src="${h(src)}">영어 + 한글 함께 복사</button></div>`;
 }
+function dropLine(text,t){
+  if(!t||!text)return text;
+  const out=String(text).split("\n").filter(l=>l.trim()!==t);
+  // remove section labels left with no lines under them
+  const res=[];for(let i=0;i<out.length;i++){const l=out[i].trim();
+    if(LYR_LAB.test(l)){let j=i+1;while(j<out.length&&!out[j].trim())j++;if(j>=out.length||/^\[.*\]$/.test(out[j].trim()))continue}
+    res.push(out[i])}
+  return res.join("\n").replace(/\n{3,}/g,"\n\n").trim();
+}
+const undoStack=[];
+function songBySrc(src){if(src==="one")return one;const [k,r]=src.split(":");return k==="batch"?batch[+r]:Store.get(r)}
+async function deleteLyricLine(src,lang,idx){
+  const s=songBySrc(src);if(!s)return;
+  const en=lyrLines(s.lyricsEn),ko=lyrLines(s.lyricsKo),paired=en.length===ko.length;
+  let tEn="",tKo="";
+  if(s.lyricsEn||s.lyricsKo){if(lang==="en"){tEn=en[idx];if(paired)tKo=ko[idx]}else{tKo=ko[idx];if(paired)tEn=en[idx]}}
+  else{const t=lyrLines(lyricsText(s.lyrics))[idx];if(lang==="en")tEn=t;else tKo=t}
+  undoStack.push({src,lyrics:s.lyrics,lyricsEn:s.lyricsEn,lyricsKo:s.lyricsKo});if(undoStack.length>30)undoStack.shift();
+  const next={lyrics:dropLine(dropLine(s.lyrics,tEn),tKo),lyricsEn:dropLine(s.lyricsEn,tEn),lyricsKo:dropLine(s.lyricsKo,tKo)};
+  await applyLyrics(src,s,next);
+  showUndo();
+}
+async function applyLyrics(src,s,next){
+  if(src.startsWith("lib:")){await Store.put({...s,...next});return}
+  Object.assign(s,next);
+  if(src==="one"){$("oneLyr").textContent=one.lyrics;updateRead()}
+  else{const d=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);const open=d&&d.open;renderBatchList();const d2=document.querySelector(`#batchList > details:nth-child(${+src.split(":")[1]+1})`);if(d2&&open)d2.open=true;syncTracks()}
+}
+let undoTimer=null;
+function showUndo(){$("undoBar").hidden=false;clearTimeout(undoTimer);undoTimer=setTimeout(()=>{$("undoBar").hidden=true},6000)}
+$("undoBtn").onclick=async()=>{const u=undoStack.pop();$("undoBar").hidden=true;if(!u)return;const s=songBySrc(u.src);if(!s)return;
+  await applyLyrics(u.src,s,{lyrics:u.lyrics,lyricsEn:u.lyricsEn,lyricsKo:u.lyricsKo});toast("되돌렸어요")};
+document.addEventListener("click",e=>{const b=e.target.closest("[data-ldel]");if(!b)return;deleteLyricLine(b.dataset.src,b.dataset.ldel,+b.dataset.i)});
 function checkHTML(r){if(!r)return"";return r.ok?`<span class="chk-ok">✓ 중복 검사 통과</span> · 예시 가사·보관함·이번 목록과 같은 줄 0개, 3단어 이상 겹침 0개 (${r.lines}줄 검사)`
   :`<span class="chk-bad">⚠ 겹치는 줄 ${r.bad.length}개</span> · ${r.bad.slice(0,3).map(h).join(" / ")}${r.bad.length>3?" …":""} — <b>다시 뽑기</b>를 눌러 주세요`}
 function updateRead(){$("lyrCheck").innerHTML=checkHTML(one.lyrCheck);const p=lyrPair(one),none=!p.en&&!p.ko;
-  $("oneEn").textContent=p.en||(none?"연주곡이라 가사가 없어요":"(영어 가사가 없어요)");$("oneKo").textContent=p.ko||(none?"연주곡이라 가사가 없어요":"(한글 가사가 없어요)");
+  $("oneEn").innerHTML=none?'<div class="none">연주곡이라 가사가 없어요</div>':lyrListHTML(p.en,"en","one");$("oneKo").innerHTML=none?'<div class="none">연주곡이라 가사가 없어요</div>':lyrListHTML(p.ko,"ko","one");
   $("lyrNoRow").hidden=!none;$("lyrBothRow").hidden=none;$("copyEn").disabled=!p.en;$("copyKo").disabled=!p.ko}
 $("toVocal").onclick=()=>{$("vocal").value="female";save();renderOne();renderYT();$("aiNote").textContent="";toast("여성 보컬 곡으로 바꿨어요")};
 function copyLyr(t,el){if(!t){toast("복사할 가사가 없어요");return}copy(t,el)}
@@ -1195,12 +1248,18 @@ $("copyKo").onclick=()=>copyLyr(lyrPair(one).ko,$("oneKo"));
 $("copyBoth").onclick=()=>copyLyr(bothText(one));
 document.addEventListener("click",e=>{const b=e.target.closest("[data-lcopy]");if(!b)return;const [kind,ref]=b.dataset.src.split(":");
   const s=kind==="batch"?batch[+ref]:Store.get(ref);if(!s)return;const k=b.dataset.lcopy;
-  copyLyr(k==="both"?bothText(s):lyrPair(s)[k],b.closest(".block")?.querySelector("pre"))});
+  copyLyr(k==="both"?bothText(s):lyrPair(s)[k],b.closest(".block")?.querySelector(".lyr-lines"))});
 
 // ---------- batch create ----------
 function batchVocalLabel(){$("batchVocalLab").textContent=$("vocal").value==="inst"?"보컬곡 1~2곡 섞기":"연주곡 1~2곡 섞기"}
 $("vocal").addEventListener("change",batchVocalLabel);batchVocalLabel();
 let batch=[];
+function renderBatchList(){
+  $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
+    ${lyrBlocks(s,"batch:"+i)}
+    <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
+    <div class="row" style="margin-top:8px"><button class="btn ghost small" data-bcopy="${i}">복사</button><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
+}
 function makeBatch(){
   const c=cfg(),n=Math.max(2,Math.min(40,parseInt($("batchN").value)||13));$("batchN").value=n;
   const used=new Set(),path=pick(KEY_PATH);
@@ -1218,10 +1277,7 @@ function makeBatch(){
   }
   const mins=n*(parseFloat($("avg").value)||3.2);
   $("batchMeta").textContent=`${n}곡 · 약 ${Math.round(mins)}분`;
-  $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
-    ${lyrBlocks(s,"batch:"+i)}
-    <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
-    <div class="row" style="margin-top:8px"><button class="btn ghost small" data-bcopy="${i}">복사</button><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
+  renderBatchList();
   $("batchSave").disabled=false;$("batchCopy").disabled=false;$("batchSheet").disabled=false;syncTracks();
 }
 $("batchMake").onclick=makeBatch;
