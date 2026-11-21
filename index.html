@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211502";
+  var APP_VERSION = "202611211507";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -84,6 +84,7 @@
   --bg:#141a19; --surface:#1c2422; --ink:#e4ebe7; --muted:#9aa9a4; --line:#2f3b38;
   --accent:#6fbdb3; --on-accent:#10201d; --brass:#d6a856; --chip:#25302d; --good:#6cc28c; --bad:#e08a76; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;
   padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
@@ -160,6 +161,9 @@ summary{cursor:pointer;font-weight:600}
 .lyrics .sec{display:flex;flex-direction:column}
 .lyrics .lab{font-family:var(--body);font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--brass)}
 .lyrics .none{font-family:var(--body);font-size:13.5px;color:var(--muted)}
+.lyr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.lyr-grid{grid-template-columns:1fr}}
+.lyr-box h3{font-size:13px;color:var(--ink)}
 pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cal-head b{font-family:var(--display);font-size:20px}
@@ -226,6 +230,19 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
           <button class="btn ghost" id="saveOne">보관함에 저장</button>
         </div>
       </div>
+      <div class="lyr-grid">
+        <div class="block lyr-box">
+          <div class="block-head"><h3>영어 가사</h3><button class="btn small" id="copyEn">영어 복사</button></div>
+          <pre class="out lyr" id="oneEn"></pre>
+        </div>
+        <div class="block lyr-box">
+          <div class="block-head"><h3>한글 가사</h3><button class="btn small" id="copyKo">한글 복사</button></div>
+          <pre class="out lyr" id="oneKo"></pre>
+        </div>
+      </div>
+      <div class="row" id="lyrNoRow" hidden><span class="meta">지금은 연주곡이라 가사가 없어요.</span><button class="btn small" id="toVocal">가사 있는 곡으로 바꾸기</button></div>
+      <div class="row" id="lyrBothRow"><button class="btn ghost small" id="copyBoth">영어 + 한글 함께 복사</button></div>
+      <p class="note" style="margin:0">아래 세 칸은 Suno에 붙여 넣는 내용이에요.</p>
       <div class="block">
         <div class="block-head"><h3>Style of Music</h3><button class="btn ghost small" data-copy="oneStyle">복사</button></div>
         <pre class="out" id="oneStyle"></pre>
@@ -240,15 +257,6 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
           <div class="row"><button class="btn ghost small ai" id="aiLyrics" hidden>AI로 가사 새로 쓰기</button><button class="btn ghost small" data-copy="oneLyr">복사</button></div></div>
         <pre class="out" id="oneLyr"></pre>
         <div class="meta" id="aiNote"></div>
-      </div>
-      <div class="block">
-        <div class="block-head"><h3>영어 가사</h3><button class="btn ghost small" id="copyEn">복사</button></div>
-        <pre class="out lyr" id="oneEn"></pre>
-      </div>
-      <div class="block">
-        <div class="block-head"><h3>한글 번역</h3><button class="btn ghost small" id="copyKo">복사</button></div>
-        <pre class="out lyr" id="oneKo"></pre>
-        <div class="row"><button class="btn ghost small" id="copyBoth">영어 + 한글 함께 복사</button></div>
       </div>
       <div class="row"><button class="btn ghost" id="copyOne">세 칸 전체 복사</button></div>
       <p class="note">Suno → Create → Custom에서 Style 칸, Exclude 칸, Lyrics 칸에 각각 붙여 넣으세요. 연주곡이면 Instrumental을 켭니다. 수익 채널에 쓸 곡은 유료 플랜 가입 중에 만들어야 합니다.</p>
@@ -744,7 +752,7 @@ function renderLib(){
       <select data-act="status" aria-label="진행 상태" style="width:auto">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${s.status===k?" selected":""}>${v}</option>`).join("")}</select>
       <label class="check"><input type="checkbox" data-act="paid"${s.paid?" checked":""}> 유료 플랜에서 생성</label>
     </div>
-    <details><summary>가사 보기 (영어 · 한글)</summary>${lyrBlocks(s,"lib:"+s.id)}</details>
+    <details><summary>영어 가사 · 한글 가사 보기</summary>${lyrBlocks(s,"lib:"+s.id)}</details>
     <details><summary>프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
     <div class="row"><button class="btn ghost small" data-act="copy">복사</button><button class="btn danger small" data-act="del">삭제</button></div>
   </div>`).join("");
@@ -1023,14 +1031,17 @@ function lyrPair(s){
   const t=lyricsText(s.lyrics);if(!t)return{en:"",ko:""};
   return /[가-힣]/.test(t)?{en:"",ko:t}:{en:t,ko:""};
 }
-const bothText=s=>{const p=lyrPair(s);return[p.en&&"[English]\n"+p.en,p.ko&&"[한글 번역]\n"+p.ko].filter(Boolean).join("\n\n")};
+const bothText=s=>{const p=lyrPair(s);return[p.en&&"[English]\n"+p.en,p.ko&&"[한글 가사]\n"+p.ko].filter(Boolean).join("\n\n")};
 function lyrBlocks(s,src){
   const p=lyrPair(s);
   if(!p.en&&!p.ko)return `<p class="meta" style="margin:8px 0 0">${NO_LYRICS}</p>`;
-  const one=(lab,txt,k)=>`<div class="block" style="margin-top:8px"><div class="block-head"><h3>${lab}</h3>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div><pre class="out lyr">${txt?h(txt):"(번역이 없어요)"}</pre></div>`;
-  return one("영어 가사",p.en,"en")+one("한글 번역",p.ko,"ko")+`<div class="row" style="margin-top:8px"><button class="btn ghost small" data-lcopy="both" data-src="${h(src)}">영어 + 한글 함께 복사</button></div>`;
+  const one=(lab,txt,k)=>`<div class="block" style="margin-top:8px"><div class="block-head"><h3>${lab}</h3>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div><pre class="out lyr">${txt?h(txt):"(가사가 없어요)"}</pre></div>`;
+  return one("영어 가사",p.en,"en")+one("한글 가사",p.ko,"ko")+`<div class="row" style="margin-top:8px"><button class="btn ghost small" data-lcopy="both" data-src="${h(src)}">영어 + 한글 함께 복사</button></div>`;
 }
-function updateRead(){const p=lyrPair(one);$("oneEn").textContent=p.en||(p.ko?"(영어 가사가 없어요)":NO_LYRICS);$("oneKo").textContent=p.ko||(p.en?"(번역이 없어요)":NO_LYRICS)}
+function updateRead(){const p=lyrPair(one),none=!p.en&&!p.ko;
+  $("oneEn").textContent=p.en||(none?"연주곡이라 가사가 없어요":"(영어 가사가 없어요)");$("oneKo").textContent=p.ko||(none?"연주곡이라 가사가 없어요":"(한글 가사가 없어요)");
+  $("lyrNoRow").hidden=!none;$("lyrBothRow").hidden=none;$("copyEn").disabled=!p.en;$("copyKo").disabled=!p.ko}
+$("toVocal").onclick=()=>{$("vocal").value="female";save();renderOne();renderYT();$("aiNote").textContent="";toast("여성 보컬 곡으로 바꿨어요")};
 function copyLyr(t,el){if(!t){toast("복사할 가사가 없어요");return}copy(t,el)}
 $("copyEn").onclick=()=>copyLyr(lyrPair(one).en,$("oneEn"));
 $("copyKo").onclick=()=>copyLyr(lyrPair(one).ko,$("oneKo"));
