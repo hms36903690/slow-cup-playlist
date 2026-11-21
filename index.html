@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211942";
+  var APP_VERSION = "202611211951";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -250,6 +250,10 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .folder-acts{margin:10px 0}
 .folder .card{background:var(--bg)}
 #batchMake.armed{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.yt-tracks .trk.static{cursor:default}
+.yt-tracks .trk.static:hover{background:none}
+.folder-tracks{margin:6px 0 10px;max-height:none;background:var(--bg)}
+.song-details>summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--accent);padding:6px 0}
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
 .undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
@@ -972,9 +976,14 @@ function renderLib(){
     const pickedN=g.songs.filter(x=>x.status==="picked").length;
     return `<details class="folder" ${libOpen.has(g.id)?"open":""} data-g="${h(g.id)}"><summary><span class="fname">📁 ${h(g.name)}</span><span class="meta">${g.songs.length}곡${pickedN?` · 영상용 ${pickedN}`:""}</span></summary>
       <div class="row folder-acts"><button class="btn small" data-gact="docs" data-g="${h(g.id)}">곡마다 파일로 저장 (${g.songs.length}개)</button><button class="btn ghost small" data-gact="file" data-g="${h(g.id)}">한 파일로 모아 저장</button><button class="btn ghost small" data-gact="pick" data-g="${h(g.id)}">모두 영상용으로 선택</button><button class="btn danger small" data-gact="delg" data-g="${h(g.id)}">폴더 삭제</button></div>
-      <div class="block" style="gap:10px">${g.songs.map(libCard).join("")}</div></details>`}).join("");
+      ${tracklistHTML(g.songs)}
+      <details class="song-details"><summary>곡별 자세히 보기 (가사 · Suno 복사 · 상태)</summary><div class="block" style="gap:10px;margin-top:10px">${g.songs.map(libCard).join("")}</div></details></details>`}).join("");
 }
 const libOpen=new Set();
+function tracklistRows(songs){const avg=(parseFloat($("avg").value)||3.2)*60;let t=0;
+  return songs.map(x=>{const st=STYLES[x.style];const r={time:fmt(t),title:x.title,sub:[x.titleKo||"",st?st.ko:x.style,`${x.bpm} BPM`,VOCAL_KO[x.vocal]||""].filter(Boolean).join(" · ")};t+=avg;return r})}
+function tracklistHTML(songs){return `<ol class="yt-tracks folder-tracks">${tracklistRows(songs).map(r=>`<li><div class="trk static"><span class="tt">${r.time}</span><span class="tn"><b>${h(r.title)}</b><span class="meta">${h(r.sub)}</span></span></div></li>`).join("")}</ol>`}
+const tracklistText=songs=>tracklistRows(songs).map(r=>`${r.time}  ${r.title}\n      ${r.sub}`).join("\n");
 function libCard(s){return `<div class="card" data-id="${h(s.id)}">
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <div style="min-width:0"><h4 class="ttl">${h(s.title)}</h4><div class="meta">${h(s.titleKo)} · ${h(STYLES[s.style]?.ko||s.style)} · ${h(s.bpm)} BPM · ${h(s.key)} · ${h(VOCAL_KO[s.vocal]||"")}</div></div>
@@ -1056,12 +1065,14 @@ $("libList").addEventListener("click",async e=>{const b=e.target.closest("[data-
     $("undoMsg").textContent=`폴더를 삭제했어요 (${songs.length}곡)`;undoKind="folder";showUndo();return}
   if(b.dataset.gact==="pick"){trackSrc="picked";for(const x of songs)if(x.status!=="picked")await Store.put({...x,status:"picked"});toast(`${songs.length}곡을 영상용으로 골랐어요. 업로드 탭에 들어갔어요`);return}
   if(b.dataset.gact==="docs"){const files=songs.map((x,i)=>({name:songFileName(x,i),data:docxFor(songParas(x))}));
+    const tl=[{t:songs[0].groupName||"곡 목록",b:true,sz:28},{t:""}];tracklistRows(songs).forEach(r=>{tl.push({t:`${r.time}   ${r.title}`,b:true});tl.push({t:`        ${r.sub}`});tl.push({t:""})});
+    files.unshift({name:"00 곡 목록 (Tracklist).docx",data:docxFor(tl)});
     const c=new Date(songs[0].created||Date.now()),pad=n=>String(n).padStart(2,"0");
     const zipName=`slowcup-${c.getFullYear()}${pad(c.getMonth()+1)}${pad(c.getDate())}-${pad(c.getHours())}${pad(c.getMinutes())}-${songs.length}songs.zip`;
     const r=await saveBlobFile(zipName,new Blob([makeZip(files)],{type:"application/zip"}));
     toast(r==="saved"?`${songs.length}곡을 곡마다 한 파일씩(.docx) 묶어 저장했어요`:r==="declined"?"저장을 취소했어요":"이 화면에서는 파일 저장이 안 돼요");return}
   if(b.dataset.gact==="file"){const c=new Date(songs[0].created||Date.now()),pad=n=>String(n).padStart(2,"0");const name=`slowcup-${c.getFullYear()}${pad(c.getMonth()+1)}${pad(c.getDate())}-${pad(c.getHours())}${pad(c.getMinutes())}-${songs.length}songs`;
-    const head=`${songs[0].groupName||"Slow Cup Jazz 곡 모음"}\n${songs.length}곡 · ${$("channel").value||"Slow Cup Jazz"}\n\n════════════════\n\n`;
+    const head=`${songs[0].groupName||"Slow Cup Jazz 곡 모음"}\n${songs.length}곡 · ${$("channel").value||"Slow Cup Jazz"}\n\n[곡 목록]\n${tracklistText(songs)}\n\n════════════════\n\n`;
     const r=await saveTextFile(`${name}.txt`,head+songs.map(fullSongText).join("\n\n────────────\n\n"));
     toast(r==="saved"?"파일로 저장했어요":r==="declined"?"저장을 취소했어요":"파일 저장이 안 되는 곳이라 내용을 복사했어요")}});
 $("backup").onclick=()=>copy(JSON.stringify([...Store.items.values()],null,1));
