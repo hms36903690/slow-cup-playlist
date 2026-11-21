@@ -42,6 +42,26 @@
   }
 })();
 </script>
+<script>
+// Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
+(function(){
+  var APP_VERSION = "202611211458";
+  function check(){
+    if (!/^https?:$/.test(location.protocol)) return;
+    fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      if (!d || !d.v || d.v === APP_VERSION) return;
+      var key = "slowcup-reloaded-" + d.v;
+      try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, "1"); } catch(e) {}
+      var t = document.getElementById("toast"); if (t) { t.textContent = "새 버전으로 바꾸는 중이에요"; t.classList.add("on"); }
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+        navigator.serviceWorker.getRegistration().then(function(reg){ return reg && reg.update(); }).catch(function(){}).then(function(){ setTimeout(function(){ location.reload(); }, 600); });
+      } else { setTimeout(function(){ location.reload(); }, 600); }
+    }).catch(function(){});
+  }
+  window.addEventListener("load", check);
+  document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") check(); });
+})();
+</script>
 </head>
 <body>
 <title>Slow Cup Jazz</title>
