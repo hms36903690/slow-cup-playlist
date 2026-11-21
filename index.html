@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611212001";
+  var APP_VERSION = "202611212005";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -995,7 +995,7 @@ function libCard(s){return `<div class="card" data-id="${h(s.id)}">
       <label class="check"><input type="checkbox" data-act="paid"${s.paid?" checked":""}> 유료 플랜에서 생성</label>
     </div>
     ${lyrBlocks(s,"lib:"+s.id)}
-    ${sunoBarHTML("lib:"+s.id,s)}<div class="row"><button class="btn ghost small" data-act="doc">파일로 저장</button><button class="btn danger small" data-act="del">삭제</button></div>
+    ${sunoBarHTML("lib:"+s.id,s)}
   </div>`}
 
 $("libList").addEventListener("change",async e=>{if(!e.target.dataset.act)return;const c=e.target.closest(".card");if(!c)return;const s=Store.get(c.dataset.id);if(!s)return;
