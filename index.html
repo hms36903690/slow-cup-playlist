@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211708";
+  var APP_VERSION = "202611211713";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -216,6 +216,10 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .flash{animation:flash 1.2s ease-out}
 @keyframes flash{0%{box-shadow:0 0 0 3px var(--accent);border-color:var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.flash{animation:none}}
+.folded .lyr-lines,.folded .lyr-edit{display:none}
+.folded .lyr-box{gap:0}
+.lyr-fold-note{display:none;font-size:12.5px;color:var(--muted)}
+.folded .lyr-fold-note{display:block}
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
 .undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
@@ -277,13 +281,13 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
           <button class="btn ghost" id="saveOne">보관함에 저장</button>
         </div>
       </div>
-      <div class="lyr-grid">
+      <div class="lyr-grid" id="lyrGridOne">
         <div class="block lyr-box">
-          <div class="block-head"><h3>영어 가사</h3><div class="row"><button class="btn ghost small" data-ledit="en" data-src="one">수정</button><button class="btn small" id="copyEn">영어 복사</button></div></div>
+          <div class="block-head"><h3>영어 가사</h3><div class="row"><button class="btn ghost small" data-lfold>접기</button><button class="btn ghost small" data-ledit="en" data-src="one">수정</button><button class="btn danger small" data-ldelall="en" data-src="one">삭제</button><button class="btn small" id="copyEn">영어 복사</button></div></div>
           <div class="lyr-lines" id="oneEn"></div>
         </div>
         <div class="block lyr-box">
-          <div class="block-head"><h3>한글 가사</h3><div class="row"><button class="btn ghost small" data-ledit="ko" data-src="one">수정</button><button class="btn small" id="copyKo">한글 복사</button></div></div>
+          <div class="block-head"><h3>한글 가사</h3><div class="row"><button class="btn ghost small" data-lfold>접기</button><button class="btn ghost small" data-ledit="ko" data-src="one">수정</button><button class="btn danger small" data-ldelall="ko" data-src="one">삭제</button><button class="btn small" id="copyKo">한글 복사</button></div></div>
           <div class="lyr-lines" id="oneKo"></div>
         </div>
       </div>
@@ -1228,8 +1232,8 @@ function lyrListHTML(txt){
 function lyrBlocks(s,src){
   const p=lyrPair(s);
   if(!p.en&&!p.ko)return `<p class="meta" style="margin:8px 0 0">${NO_LYRICS}</p>`;
-  const one=(lab,txt,k)=>`<div class="block" style="margin-top:8px"><div class="block-head"><h3>${lab}</h3><div class="row"><button class="btn ghost small" data-ledit="${k}" data-src="${h(src)}">수정</button>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div></div><div class="lyr-lines">${lyrListHTML(txt)}</div></div>`;
-  return one("영어 가사",p.en,"en")+one("한글 가사",p.ko,"ko")+`<div class="row" style="margin-top:8px"><button class="btn ghost small" data-lcopy="both" data-src="${h(src)}">영어 + 한글 함께 복사</button></div>`;
+  const one=(lab,txt,k)=>`<div class="block lyr-box" style="margin-top:8px"><div class="block-head"><h3>${lab}</h3><div class="row"><button class="btn ghost small" data-lfold>접기</button><button class="btn ghost small" data-ledit="${k}" data-src="${h(src)}">수정</button><button class="btn danger small" data-ldelall="${k}" data-src="${h(src)}">삭제</button>${txt?`<button class="btn ghost small" data-lcopy="${k}" data-src="${h(src)}">복사</button>`:""}</div></div><div class="lyr-lines">${lyrListHTML(txt)}</div></div>`;
+  return `<div class="lyr-wrap">`+one("영어 가사",p.en,"en")+one("한글 가사",p.ko,"ko")+`</div><div class="row" style="margin-top:8px"><button class="btn ghost small" data-lcopy="both" data-src="${h(src)}">영어 + 한글 함께 복사</button></div>`;
 }
 const undoStack=[];
 function songBySrc(src){if(src==="one")return one;const [k,r]=src.split(":");return k==="batch"?batch[+r]:Store.get(r)}
@@ -1253,15 +1257,16 @@ function startEdit(btn){
   const cur=lyrPair(s)[lang]||"";
   box.hidden=true;btn.closest(".row").hidden=true;
   const ed=document.createElement("div");ed.className="lyr-edit";
-  ed.innerHTML=`<textarea aria-label="${lang==="en"?"영어":"한글"} 가사 수정"></textarea><p class="meta" style="margin:0">[Verse 1], [Chorus] 같은 구간 이름은 대괄호 그대로 두세요. 줄을 지우거나 고치거나 새로 써도 돼요.</p><div class="row"><button type="button" class="btn small" data-esave>저장</button><button type="button" class="btn ghost small" data-ecancel>취소</button></div>`;
+  ed.innerHTML=`<textarea aria-label="${lang==="en"?"영어":"한글"} 가사 수정"></textarea><p class="meta" style="margin:0">[Verse 1], [Chorus] 같은 구간 이름은 대괄호 그대로 두세요. 줄을 지우거나 고치거나 새로 써도 돼요.</p><div class="row"><button type="button" class="btn small" data-esave>저장</button><button type="button" class="btn ghost small" data-ecancel>취소</button><button type="button" class="btn danger small" data-eclear>전체 지우기</button></div>`;
   const ta=ed.querySelector("textarea");ta.value=cur;box.after(ed);ta.focus();
   const row=btn.closest(".row"),close=()=>{ed.remove();box.hidden=false;row.hidden=false};
   ed.querySelector("[data-ecancel]").onclick=close;
+  ed.querySelector("[data-eclear]").onclick=()=>{ta.value="";ta.focus();toast("글을 모두 지웠어요. 저장해야 반영돼요")};
   ed.querySelector("[data-esave]").onclick=async()=>{
     const v=ta.value.replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+$/,"")).join("\n").trim();
     undoStack.push({src,lyrics:s.lyrics,lyricsEn:s.lyricsEn,lyricsKo:s.lyricsKo});if(undoStack.length>30)undoStack.shift();
     const next=lang==="en"?{lyricsEn:v}:{lyricsKo:v};const tmp={...s,...next};next.lyrics=rebuildSuno(tmp);close();
-    await applyLyrics(src,s,next);showUndo();toast("저장했어요")};
+    await applyLyrics(src,s,next);$("undoMsg").textContent="가사를 수정했어요";showUndo();toast("저장했어요")};
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-ledit]");if(b)startEdit(b)});
 async function applyLyrics(src,s,next){
@@ -1277,8 +1282,9 @@ $("undoBtn").onclick=async()=>{const u=undoStack.pop();$("undoBar").hidden=true;
 function checkHTML(r){if(!r)return"";return r.ok?`<span class="chk-ok">✓ 중복 검사 통과</span> · 예시 가사·보관함·이번 목록과 같은 줄 0개, 3단어 이상 겹침 0개 (${r.lines}줄 검사)`
   :`<span class="chk-bad">⚠ 겹치는 줄 ${r.bad.length}개</span> · ${r.bad.slice(0,3).map(h).join(" / ")}${r.bad.length>3?" …":""} — <b>다시 뽑기</b>를 눌러 주세요`}
 function updateRead(){resetSunoOne();$("lyrCheck").innerHTML=checkHTML(one.lyrCheck);const p=lyrPair(one),none=!p.en&&!p.ko;
-  $("oneEn").innerHTML=none?'<div class="none">연주곡이라 가사가 없어요</div>':lyrListHTML(p.en);$("oneKo").innerHTML=none?'<div class="none">연주곡이라 가사가 없어요</div>':lyrListHTML(p.ko);
-  $("lyrNoRow").hidden=!none;$("lyrBothRow").hidden=none;$("copyEn").disabled=!p.en;$("copyKo").disabled=!p.ko}
+  const inst=one.vocal==="inst"||one.vocal==="scat",emptyMsg=inst?'<div class="none">연주곡이라 가사가 없어요</div>':'<div class="none">가사가 없어요. 수정을 눌러 새로 쓰거나 다시 뽑기를 누르세요.</div>';
+  $("oneEn").innerHTML=p.en?lyrListHTML(p.en):emptyMsg;$("oneKo").innerHTML=p.ko?lyrListHTML(p.ko):emptyMsg;
+  $("lyrNoRow").hidden=!(none&&inst);$("lyrBothRow").hidden=none;$("copyEn").disabled=!p.en;$("copyKo").disabled=!p.ko}
 $("toVocal").onclick=()=>{$("vocal").value="female";save();renderOne();renderYT();$("aiNote").textContent="";toast("여성 보컬 곡으로 바꿨어요")};
 function copyLyr(t,el){if(!t){toast("복사할 가사가 없어요");return}copy(t,el)}
 $("copyEn").onclick=()=>copyLyr(lyrPair(one).en,$("oneEn"));
@@ -1287,6 +1293,22 @@ $("copyBoth").onclick=()=>copyLyr(bothText(one));
 document.addEventListener("click",e=>{const b=e.target.closest("[data-lcopy]");if(!b)return;const [kind,ref]=b.dataset.src.split(":");
   const s=kind==="batch"?batch[+ref]:Store.get(ref);if(!s)return;const k=b.dataset.lcopy;
   copyLyr(k==="both"?bothText(s):lyrPair(s)[k],b.closest(".block")?.querySelector(".lyr-lines"))});
+
+// ---------- delete a whole lyrics box ----------
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-ldelall]");if(!b)return;
+  const src=b.dataset.src,lang=b.dataset.ldelall,s=songBySrc(src);if(!s)return;
+  if(!lyrPair(s)[lang]){toast("지울 가사가 없어요");return}
+  undoStack.push({src,lyrics:s.lyrics,lyricsEn:s.lyricsEn,lyricsKo:s.lyricsKo});if(undoStack.length>30)undoStack.shift();
+  const next=lang==="en"?{lyricsEn:""}:{lyricsKo:""};
+  const tmp={...s,...next};
+  next.lyrics=rebuildSuno(tmp).replace(/\n{3,}/g,"\n\n");
+  await applyLyrics(src,s,next);$("undoMsg").textContent=(lang==="en"?"영어":"한글")+" 가사를 삭제했어요";showUndo()});
+
+// ---------- fold lyrics ----------
+function setFold(wrap,folded){wrap.classList.toggle("folded",folded);wrap.querySelectorAll("[data-lfold]").forEach(b=>{b.textContent=folded?"펼치기":"접기";b.setAttribute("aria-expanded",String(!folded))})}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-lfold]");if(!b)return;const w=b.closest(".lyr-wrap,.lyr-grid");if(!w)return;
+  const f=!w.classList.contains("folded");setFold(w,f);if(w.id==="lyrGridOne"){try{localStorage.setItem("slowcup-lyrfold",f?"1":"")}catch(err){}}});
+try{if(localStorage.getItem("slowcup-lyrfold")==="1")setFold($("lyrGridOne"),true)}catch(e){}
 
 // ---------- Suno copy bar ----------
 function sunoBarHTML(src,song){

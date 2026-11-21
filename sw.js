@@ -1,5 +1,5 @@
 // Slow Cup Jazz service worker: keeps the app working offline after the first visit.
-const CACHE = "slowcup-v17";
+const CACHE = "slowcup-v18";
 const SHELL = ["./", "index.html", "playlist.html", "manifest.webmanifest", "version.json",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {
