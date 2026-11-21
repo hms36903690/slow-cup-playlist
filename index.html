@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211720";
+  var APP_VERSION = "202611211734";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -224,6 +224,12 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .lyr-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .lyr-top h3{margin:0;font-size:13px;color:var(--ink)}
 .folded .lyr-grid{display:none}
+.yt-tracks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.yt-tracks li{display:grid;grid-template-columns:62px 1fr;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);align-items:baseline}
+.yt-tracks li:last-child{border-bottom:none}
+.yt-tracks .tt{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600;font-size:13px}
+.yt-tracks .tn{display:flex;flex-direction:column;min-width:0}
+.yt-tracks .tn b{font-family:var(--display);font-size:15.5px;font-weight:700}
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
 .undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
@@ -333,11 +339,12 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
   <!-- UPLOAD -->
   <section class="view" id="v-yt" hidden>
     <div class="panel">
+      <div class="block-head"><h3>이번 영상의 곡</h3><span class="meta" id="ytSource"></span></div>
+      <div id="ytTracks"></div>
       <div class="row" style="align-items:end">
         <label style="flex:0 1 160px">평균 곡 길이(분)<input type="number" id="avg" min="1.5" max="6" step="0.1" value="3.2"></label>
-        <div class="meta" id="ytSource" style="flex:1 1 200px"></div>
+        <p class="meta" style="flex:1 1 220px;margin:0">보관함에서 <b>영상용으로 선택</b>한 곡이 있으면 그 곡, 없으면 만들기 탭에서 한번에 만든 곡이에요. 시간은 평균 길이로 계산한 대략값이니 실제 곡 길이에 맞게 고쳐 주세요.</p>
       </div>
-      <p class="note">보관함에서 <b>영상용으로 선택</b>한 곡이 있으면 그 곡으로, 없으면 만들기 탭에서 <b>한번에 만든 곡</b>으로 타임스탬프를 만듭니다. 타임스탬프는 실제 곡 길이에 맞게 고친 뒤 올리세요.</p>
     </div>
     <div class="panel" id="thumbPanel">
       <div class="block-head"><h3>썸네일 시안</h3><span class="meta">1280 × 720 · 유튜브 권장 크기</span></div>
@@ -911,7 +918,7 @@ async function initStore(){
 const VIEWS=["v-create","v-yt","v-lib","v-log","v-tr"];
 function go(v){
   VIEWS.forEach(x=>$(x).hidden=x!==v);
-  $("settingsWrap").hidden=!["v-create","v-yt"].includes(v);
+  $("settingsWrap").hidden=v!=="v-create";
   document.querySelectorAll(".tabbar button").forEach(b=>{if(b.dataset.v===v)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   try{localStorage.setItem("slowcup-view",v)}catch(e){}
   window.scrollTo(0,0);
@@ -1438,9 +1445,14 @@ $("reroll").onclick=()=>{renderOne();$("aiNote").textContent=""};
 ["mood","place","style","vocal","lang"].forEach(id=>$(id).addEventListener("change",()=>{save();renderOne();renderYT();$("aiNote").textContent=""}));
 ["channel","avg"].forEach(id=>$(id).addEventListener("change",()=>{save();syncTracks()}));
 
+function renderYtTracks(){
+  const avg=(parseFloat($("avg").value)||3.2)*60;let t=0;
+  $("ytTracks").innerHTML=list.length?`<ol class="yt-tracks">${list.map(s=>{const st=STYLES[s.style];const r=`<li><span class="tt">${fmt(t)}</span><div class="tn"><b>${h(s.title)}</b><span class="meta">${h(s.titleKo||"")} · ${h(st?st.ko:s.style)} · ${h(s.bpm)} BPM · ${h(VOCAL_KO[s.vocal]||"")}</span></div></li>`;t+=avg;return r}).join("")}</ol>`
+    :'<div class="empty">아직 곡이 없어요. <b>만들기</b> 탭의 <b>플레이리스트 만들기</b>에서 <b>한번에 만들기</b>를 누르면 여기에 곡 목록이 나와요.</div>';
+}
 function syncTracks(){const picked=Store.all("song").filter(s=>s.status==="picked").sort((a,b)=>(a.created||"").localeCompare(b.created||""));
   list=picked.length?picked:batch;const mins=Math.round(list.length*(parseFloat($("avg").value)||3.2));
-  $("ytSource").textContent=picked.length?`보관함의 영상용 곡 ${list.length}곡 · 약 ${mins}분`:batch.length?`만들기 탭에서 한번에 만든 곡 ${list.length}곡 · 약 ${mins}분`:"아직 곡이 없어요. 만들기 탭에서 여러 곡을 한번에 만들어 보세요.";renderYT()}
+  $("ytSource").textContent=picked.length?`보관함의 영상용 곡 ${list.length}곡 · 약 ${mins}분`:batch.length?`만들기 탭에서 한번에 만든 곡 ${list.length}곡 · 약 ${mins}분`:"아직 곡이 없어요. 만들기 탭에서 여러 곡을 한번에 만들어 보세요.";renderYtTracks();renderYT()}
 Store.on(()=>{renderLib();renderPlan();renderLog();syncTracks()});
 renderOne();renderLib();renderPlan();renderLog();syncTracks();
 try{const v=localStorage.getItem("slowcup-view");if(VIEWS.includes(v))go(v)}catch(e){}
