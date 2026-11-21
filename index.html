@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611211620";
+  var APP_VERSION = "202611211708";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -210,6 +210,12 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .suno-steps button small{font-weight:500;font-size:11px;opacity:.85}
 .suno-steps button.done{background:transparent;color:var(--accent)}
 .suno-steps button.done::after{content:"✓ 복사됨";font-size:11px}
+.genre-box{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);display:flex;flex-direction:column;gap:4px}
+.genre-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.genre-text{font-family:var(--mono);font-size:12.5px;line-height:1.55;overflow-wrap:anywhere}
+.flash{animation:flash 1.2s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 3px var(--accent);border-color:var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.flash{animation:none}}
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
 .undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
@@ -929,7 +935,7 @@ function renderLib(){
     </div>
     <details><summary>영어 가사 · 한글 가사 보기</summary>${lyrBlocks(s,"lib:"+s.id)}</details>
     <details><summary>프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
-    ${sunoBarHTML("lib:"+s.id,s.vocal==="inst"||s.vocal==="scat")}<div class="row"><button class="btn danger small" data-act="del">삭제</button></div>
+    ${sunoBarHTML("lib:"+s.id,s)}<div class="row"><button class="btn danger small" data-act="del">삭제</button></div>
   </div>`).join("");
 }
 $("libList").addEventListener("change",async e=>{if(!e.target.dataset.act)return;const c=e.target.closest(".card");if(!c)return;const s=Store.get(c.dataset.id);if(!s)return;
@@ -1283,15 +1289,18 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-lcopy]");i
   copyLyr(k==="both"?bothText(s):lyrPair(s)[k],b.closest(".block")?.querySelector(".lyr-lines"))});
 
 // ---------- Suno copy bar ----------
-function sunoBarHTML(src,inst){
+function sunoBarHTML(src,song){
+  const inst=song.vocal==="inst"||song.vocal==="scat",st=STYLES[song.style];
   const b=(k,lab,sub)=>`<button type="button" data-suno="${k}" data-src="${h(src)}">${lab}<small>${sub}</small></button>`;
   return `<div class="suno-bar" style="margin-top:8px"><div class="suno-head"><b>Suno에 바로 넣기</b><a href="https://suno.com/create" target="_blank" rel="noopener">Suno 열기 ↗</a></div>
+    <div class="genre-box"><div class="genre-top"><span class="pill v">${h(st?st.ko:song.style)}</span><span class="meta">${h(song.bpm)} BPM · ${h(song.key)} · ${h(VOCAL_KO[song.vocal]||"")}</span></div><div class="genre-text">${h(song.styleText)}</div></div>
     <div class="suno-steps">${b("lyrics","① 가사 복사","Lyrics 칸")}${b("style","② 장르 복사","Style of Music 칸")}${b("title","③ 제목 복사","Song Title 칸")}${b("exclude","④ 제외 복사","Exclude Styles 칸")}</div>
     ${inst?'<p class="meta" style="margin:0">연주곡이에요. Suno에서 <b>Instrumental</b>도 켜 주세요.</p>':""}</div>`;
 }
 function sunoText(s,k){return k==="lyrics"?s.lyrics:k==="style"?s.styleText:k==="title"?s.title:(s.exclude||EXCLUDE)}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-suno]");if(!b)return;const s=songBySrc(b.dataset.src);if(!s)return;
   const t=sunoText(s,b.dataset.suno);if(!t){toast("복사할 내용이 없어요");return}
+  if(b.dataset.suno==="style"){const g=b.closest(".suno-bar")?.querySelector(".genre-box")||$("oneStyle");if(g){g.classList.remove("flash");void g.offsetWidth;g.classList.add("flash")}}
   navigator.clipboard.writeText(t).then(()=>{b.classList.add("done");toast({lyrics:"가사를 복사했어요 → Lyrics 칸에 붙여 넣기",style:"장르를 복사했어요 → Style of Music 칸에 붙여 넣기",title:"제목을 복사했어요 → Song Title 칸에 붙여 넣기",exclude:"제외 스타일을 복사했어요 → Exclude Styles 칸에 붙여 넣기"}[b.dataset.suno])})
     .catch(()=>{copy(t)})});
 function resetSunoOne(){document.querySelectorAll("#sunoOne [data-suno]").forEach(b=>b.classList.remove("done"));
@@ -1305,7 +1314,7 @@ function renderBatchList(){
   $("batchList").innerHTML=batch.map((s,i)=>`<details><summary>${i+1}. ${h(s.title)} <span class="meta">· ${h(STYLES[s.style].ko)} · ${s.bpm} BPM · ${h(s.key)} · ${VOCAL_KO[s.vocal]}${s.lyrCheck?(s.lyrCheck.ok?" · ✓ 중복 없음":" · ⚠ 겹침"):""}</span></summary>
     ${lyrBlocks(s,"batch:"+i)}
     <details style="border:none;padding:6px 0 0"><summary class="meta">Suno에 붙여 넣을 프롬프트 보기</summary><pre class="out" style="margin-top:8px">${h(songText(s))}</pre></details>
-    ${sunoBarHTML("batch:"+i,s.vocal==="inst"||s.vocal==="scat")}<div class="row" style="margin-top:8px"><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
+    ${sunoBarHTML("batch:"+i,s)}<div class="row" style="margin-top:8px"><button class="btn ghost small" data-bsave="${i}">보관함에 저장</button></div></details>`).join("");
 }
 function makeBatch(){
   const c=cfg(),n=Math.max(2,Math.min(40,parseInt($("batchN").value)||13));$("batchN").value=n;
