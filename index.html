@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611212041";
+  var APP_VERSION = "202611220328";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -312,6 +312,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
       <div class="grid">
         <label>곡 수<input type="number" id="batchN" min="2" max="40" value="13"></label>
         <label class="check" style="align-self:end"><input type="checkbox" id="batchMix" checked> 비슷한 스타일 섞기</label>
+        <label class="check" style="align-self:end"><input type="checkbox" id="batchUnique"> 곡마다 다른 장르</label>
         <label class="check" style="align-self:end"><input type="checkbox" id="batchVocal"> <span id="batchVocalLab">연주곡 1~2곡 섞기</span></label>
       </div>
       <div class="row">
@@ -651,7 +652,7 @@ try{const s=JSON.parse(localStorage.getItem(SKEY)||"{}");for(const k in s){if($(
 try{if(!localStorage.getItem("slowcup-lang-en")){$("lang").value="en";localStorage.setItem("slowcup-lang-en","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.lang="en";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("lang").value="en"}
 try{if(!localStorage.getItem("slowcup-vocal-female")){$("vocal").value="female";localStorage.setItem("slowcup-vocal-female","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.vocal="female";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("vocal").value="female"}
 try{if(!localStorage.getItem("slowcup-channel-qq")){$("channel").value="qqyvren";localStorage.setItem("slowcup-channel-qq","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.channel="qqyvren";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("channel").value="qqyvren"}
-function save(){try{const o={};["mood","place","style","vocal","lang","channel","count","avg","mixStyle","mixVocal"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
+function save(){try{const o={};["mood","place","style","vocal","lang","channel","count","avg","mixStyle","mixVocal","batchMix","batchVocal","batchUnique","batchN"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
 const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").value,vocal:$("vocal").value,lang:$("lang").value});
 
 function makeTitle(m,p,s,used){
@@ -1490,6 +1491,8 @@ function resetSunoOne(){document.querySelectorAll("#sunoOne [data-suno]").forEac
   $("sunoInst").innerHTML=(one.vocal==="inst"||one.vocal==="scat")?"연주곡이에요. Suno에서 <b>Custom</b>과 <b>Instrumental</b>을 켜고, 버튼을 차례로 눌러 같은 이름의 칸에 붙여 넣으세요.":"Suno에서 <b>Custom</b>을 켜고, 버튼을 차례로 눌러 같은 이름의 칸에 붙여 넣으세요."}
 
 // ---------- batch create ----------
+function syncUniqueOpt(){const u=$("batchUnique").checked;$("batchMix").disabled=u;$("batchMix").closest("label").style.opacity=u?.45:1}
+$("batchUnique").addEventListener("change",()=>{syncUniqueOpt();save()});["batchMix","batchVocal","batchN"].forEach(id=>$(id).addEventListener("change",save));setTimeout(syncUniqueOpt,0);
 function batchVocalLabel(){$("batchVocalLab").textContent=$("vocal").value==="inst"?"보컬곡 1~2곡 섞기":"연주곡 1~2곡 섞기"}
 $("vocal").addEventListener("change",batchVocalLabel);batchVocalLabel();
 let batch=[];
@@ -1510,10 +1513,14 @@ function makeBatch(){
   const c=cfg(),n=Math.max(2,Math.min(40,parseInt($("batchN").value)||13));$("batchN").value=n;
   const used=new Set(),path=pick(KEY_PATH);
   const styles=$("batchMix").checked?[c.style,c.style,...NEIGHBOR[c.style]]:[c.style];
+  // "곡마다 다른 장르": the chosen style first, then the closest styles, then the rest, never repeating until all 14 are used.
+  const uniq=$("batchUnique").checked;let order=[];
+  if(uniq){const seen=new Set([c.style]),q=[c.style];order=[c.style];while(q.length){const cur=q.shift();(NEIGHBOR[cur]||[]).forEach(x=>{if(!seen.has(x)){seen.add(x);order.push(x);q.push(x)}})}
+    Object.keys(STYLES).forEach(x=>{if(!seen.has(x)){seen.add(x);order.push(x)}});}
   const vocalIdx=new Set();if($("batchVocal").checked){vocalIdx.add(Math.round(n*.5));if(n>=10)vocalIdx.add(Math.round(n*.8))}
   batch=[];
   for(let i=0;i<n;i++){
-    const st=(i===0||i===n-1)?c.style:styles[Math.floor(rng()*styles.length)];
+    const st=uniq?order[i%order.length]:(i===0||i===n-1)?c.style:styles[Math.floor(rng()*styles.length)];
     const S=STYLES[st];const x=i/(n-1);
     const energy=x<.15?.3:x<.65?.35+.6*Math.sin((x-.15)/.5*Math.PI/2):.9-1.6*(x-.65);
     const bpm=Math.round(S.bpm[0]+(S.bpm[1]-S.bpm[0])*Math.max(0,Math.min(1,energy)));
