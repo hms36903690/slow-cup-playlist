@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611220328";
+  var APP_VERSION = "202611220734";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -264,6 +264,12 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 .quick a small{font-size:10px;font-weight:500;opacity:.9}
 .quick a:hover{filter:brightness(1.08)}
 .quick a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.appbar .sync{font:inherit;font-size:11.5px;background:none;border:1px solid var(--line);border-radius:99px;padding:3px 10px;cursor:pointer;color:var(--muted)}
+.appbar .sync.local{border-color:var(--brass);color:var(--brass);font-weight:600}
+.appbar .sync.ok{color:var(--good);border-color:var(--good)}
+.dev-help{margin-bottom:16px}
+.dev-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.mono-sel{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere;user-select:all}
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:21;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 6px 6px 14px;display:flex;gap:10px;align-items:center;font-size:13px;max-width:calc(100% - 32px)}
 .undo-bar button{font:inherit;font-weight:600;background:var(--bg);color:var(--ink);border:none;border-radius:6px;padding:6px 10px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
@@ -275,7 +281,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 <header class="appbar"><div class="in">
   <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true" style="flex:none"><rect x="1" y="1" width="30" height="30" rx="8" fill="var(--accent)"/><path d="M9 14h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z" fill="none" stroke="var(--on-accent)" stroke-width="1.8"/><path d="M21 15.5h1.5a2.3 2.3 0 0 1 0 4.6H21" fill="none" stroke="var(--on-accent)" stroke-width="1.8"/><path d="M13 11c0-1.2 1.2-1.4 1.2-2.6M16.5 11c0-1.2 1.2-1.4 1.2-2.6" stroke="var(--on-accent)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
   <div class="brand">Slow Cup Jazz<small>카페 재즈 채널 운영 앱</small></div>
-  <div class="sync" id="sync">불러오는 중</div>
+  <button type="button" class="sync" id="sync" aria-expanded="false" aria-controls="devHelp" title="PC·노트북에서 같이 쓰는 법">불러오는 중</button>
 </div>
 <nav class="quick" aria-label="바로가기">
   <span class="quick-lab">바로가기</span>
@@ -288,6 +294,19 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
 </nav></header>
 
 <main>
+  <section class="view dev-help" id="devHelp" hidden>
+    <div class="panel">
+      <div class="block-head"><h3>PC · 노트북 · 휴대폰에서 같이 쓰는 법</h3><button type="button" class="btn ghost small" id="devHelpClose">닫기</button></div>
+      <p class="meta" id="devHelpState" style="margin:0"></p>
+      <ol class="dev-steps">
+        <li>그 기기의 <b>Chrome</b>(또는 Edge)에서 <b>claude.ai</b>에 들어가 <b>PC와 같은 계정</b>으로 로그인합니다. (처음 한 번만)</li>
+        <li>이 앱 링크를 엽니다: <span class="mono-sel">https://claude.ai/artifact/5BqVpurjXpPL7c5W17CbzC</span> <button type="button" class="btn ghost small" id="copyAppLink">링크 복사</button></li>
+        <li>오른쪽 위가 <b>"내 계정에 저장 중"</b>이면 성공이에요. 다른 기기에서 만든 곡·보관함·일정·기록이 그대로 보여요. 바로 안 보이면 새로고침(F5)을 누르세요.</li>
+        <li>다음에 바로 열려면 <b>Ctrl + D</b>로 북마크하거나, Chrome 메뉴(⋮) → 전송, 저장 및 공유 → <b>바로가기 만들기</b> → "창으로 열기" 체크 → 만들기.</li>
+      </ol>
+      <p class="note" style="margin:0"><b>github.io 주소(설치형 앱)</b>는 그 기기에만 저장돼서 다른 기기와 공유되지 않아요. 여러 기기에서 쓰려면 위 claude.ai 링크로 여세요. 컴퓨터를 꺼 둬도 데이터는 계정에 남아 있어요.</p>
+    </div>
+  </section>
   <!-- shared settings -->
   <section class="view" id="settingsWrap" style="margin-bottom:16px">
     <div class="panel" aria-label="오늘의 주문">
@@ -943,8 +962,14 @@ const Store={mode:"loading",items:new Map(),col:null,subs:[],
   }
 };
 function setSync(){
-  $("sync").textContent=Store.mode==="db"?"내 계정에 저장 중":Store.mode==="local"?"이 기기에만 저장":"불러오는 중";
+  const el=$("sync");el.textContent=Store.mode==="db"?"내 계정에 저장 중":Store.mode==="local"?"이 기기에만 저장 ⓘ":"불러오는 중";
+  el.classList.toggle("ok",Store.mode==="db");el.classList.toggle("local",Store.mode==="local");
+  $("devHelpState").innerHTML=Store.mode==="db"?"✓ 지금 이 기기는 <b>내 계정에 저장</b> 중이에요. 다른 기기에서도 같은 계정으로 열면 같은 내용이 보여요."
+    :Store.mode==="local"?"⚠ 지금 이 기기는 <b>이 기기에만 저장</b> 중이에요. 다른 기기와 같이 쓰려면 아래 순서대로 해 주세요.":"";
+  // Open the guide automatically once on a device that is not saving to the account.
+  if(Store.mode==="local"){try{if(!localStorage.getItem("slowcup-devhelp-seen")){localStorage.setItem("slowcup-devhelp-seen","1");toggleDevHelp(true)}}catch(e){}}
 }
+function toggleDevHelp(open){const h=$("devHelp");const o=open==null?h.hidden:open;h.hidden=!o;$("sync").setAttribute("aria-expanded",String(o));if(o)window.scrollTo({top:0,behavior:"smooth"})}
 async function initStore(){
   let db=null,user=null,id=null;
   try{
@@ -961,6 +986,8 @@ async function initStore(){
   }else{Store.mode="local";Store.loadLocal();setSync();Store.emit()}
 }
 
+$("sync").addEventListener("click",()=>toggleDevHelp());$("devHelpClose").onclick=()=>toggleDevHelp(false);
+$("copyAppLink").onclick=()=>copy("https://claude.ai/artifact/5BqVpurjXpPL7c5W17CbzC");
 // ---------- navigation ----------
 const VIEWS=["v-create","v-yt","v-lib","v-log","v-tr"];
 function go(v){
