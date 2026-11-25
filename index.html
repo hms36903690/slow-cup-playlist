@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611251204";
+  var APP_VERSION = "202611251209";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -320,7 +320,7 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
         <label>가사 언어<select id="lang">
           <option value="en" selected>영어</option><option value="ko">한국어</option><option value="mix">한국어 + 영어 후렴</option></select></label>
         <label>훅(반복 구간) 넣기<select id="hook">
-          <option value="chorus" selected>후렴 앞에</option><option value="start">노래 시작에</option><option value="both">시작과 후렴 앞 모두</option><option value="none">넣지 않기</option></select></label>
+          <option value="both" selected>시작과 후렴 앞 모두</option><option value="chorus">후렴 앞에</option><option value="start">노래 시작에</option><option value="none">넣지 않기</option></select></label>
         <label>채널 이름<input type="text" id="channel" value="qqyvren"></label>
       </div>
     </div>
@@ -672,6 +672,7 @@ const SKEY="slowcup-settings";
 try{const s=JSON.parse(localStorage.getItem(SKEY)||"{}");for(const k in s){if($(k)){if($(k).type==="checkbox")$(k).checked=s[k];else $(k).value=s[k]}}}catch(e){}
 try{if(!localStorage.getItem("slowcup-lang-en")){$("lang").value="en";localStorage.setItem("slowcup-lang-en","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.lang="en";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("lang").value="en"}
 try{if(!localStorage.getItem("slowcup-vocal-female")){$("vocal").value="female";localStorage.setItem("slowcup-vocal-female","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.vocal="female";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("vocal").value="female"}
+try{if(!localStorage.getItem("slowcup-hook-both")){$("hook").value="both";localStorage.setItem("slowcup-hook-both","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.hook="both";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){}
 try{if(!localStorage.getItem("slowcup-channel-qq")){$("channel").value="qqyvren";localStorage.setItem("slowcup-channel-qq","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.channel="qqyvren";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("channel").value="qqyvren"}
 function save(){try{const o={};["mood","place","style","vocal","lang","hook","channel","count","avg","mixStyle","mixVocal","batchMix","batchVocal","batchUnique","batchN"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
 const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").value,vocal:$("vocal").value,lang:$("lang").value,hook:$("hook")?$("hook").value:"none"});
