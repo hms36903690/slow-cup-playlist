@@ -45,7 +45,7 @@
 <script>
 // Auto-update: when the app opens or comes back on screen, compare with the published version and reload once if it changed.
 (function(){
-  var APP_VERSION = "202611220734";
+  var APP_VERSION = "202611251204";
   function check(){
     if (!/^https?:$/.test(location.protocol)) return;
     fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
@@ -319,6 +319,8 @@ pre.out.lyr{font-family:var(--body);font-size:14.5px;line-height:1.85}
           <option value="inst">연주곡</option><option value="scat">허밍·스캣</option></select></label>
         <label>가사 언어<select id="lang">
           <option value="en" selected>영어</option><option value="ko">한국어</option><option value="mix">한국어 + 영어 후렴</option></select></label>
+        <label>훅(반복 구간) 넣기<select id="hook">
+          <option value="chorus" selected>후렴 앞에</option><option value="start">노래 시작에</option><option value="both">시작과 후렴 앞 모두</option><option value="none">넣지 않기</option></select></label>
         <label>채널 이름<input type="text" id="channel" value="qqyvren"></label>
       </div>
     </div>
@@ -671,8 +673,8 @@ try{const s=JSON.parse(localStorage.getItem(SKEY)||"{}");for(const k in s){if($(
 try{if(!localStorage.getItem("slowcup-lang-en")){$("lang").value="en";localStorage.setItem("slowcup-lang-en","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.lang="en";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("lang").value="en"}
 try{if(!localStorage.getItem("slowcup-vocal-female")){$("vocal").value="female";localStorage.setItem("slowcup-vocal-female","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.vocal="female";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("vocal").value="female"}
 try{if(!localStorage.getItem("slowcup-channel-qq")){$("channel").value="qqyvren";localStorage.setItem("slowcup-channel-qq","1");const s=JSON.parse(localStorage.getItem(SKEY)||"{}");s.channel="qqyvren";localStorage.setItem(SKEY,JSON.stringify(s))}}catch(e){$("channel").value="qqyvren"}
-function save(){try{const o={};["mood","place","style","vocal","lang","channel","count","avg","mixStyle","mixVocal","batchMix","batchVocal","batchUnique","batchN"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
-const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").value,vocal:$("vocal").value,lang:$("lang").value});
+function save(){try{const o={};["mood","place","style","vocal","lang","hook","channel","count","avg","mixStyle","mixVocal","batchMix","batchVocal","batchUnique","batchN"].forEach(k=>{if(!$(k))return;o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value});localStorage.setItem(SKEY,JSON.stringify(o))}catch(e){}}
+const cfg=()=>({mood:$("mood").value,place:$("place").value,style:$("style").value,vocal:$("vocal").value,lang:$("lang").value,hook:$("hook")?$("hook").value:"none"});
 
 function makeTitle(m,p,s,used){
   const M=MOODS[m],P=PLACES[p],S=STYLES[s];
@@ -804,7 +806,15 @@ function lyricCorpus(skip){
   const lib=libCorpus(skip);lib.lines.forEach(l=>set.add(l));
   return{set,grams,grams4:lib.grams4};
 }
-function lxClash(line,C){const n=lxNorm(line);if(C.set.has(n))return true;if(lxGrams(line).some(g=>C.grams.has(g)))return true;return!!C.grams4&&lxGrams(line,4).some(g=>C.grams4.has(g))}
+// Hooks: vocal sounds (woo, yeah, la...) that repeat. Varied per song; not counted as lyrics in the duplicate check.
+const HOOK_A=["woo woo woo woo","ooh ooh ooh ooh","la la la la","da da da da","na na na na","doo doo doo doo"],HOOK_B=["wah uh","ya ya","hey eh","bop bah","mm hmm","oh whoa"];
+const HOOK_T=["yeah e yeah e yeah ~eh","oh oh oh ~oh","la la la ~ah","yeah yeah ~yeah","mm mm mm ~mm","hey hey ~hey"];
+const HOOK_S1=["woo","la","da","na","doo"],HOOK_S2=["yeah","whoa","hey"],HOOK_S3=["wuh wuh uh uh~","mm mm hmm hmm~","la la ah ah~","doo doo ooh ooh~","na na eh eh~"];
+function makeHook(){const a=pick(HOOK_A),b=pick(HOOK_B),t=pick(HOOK_T),s1=pick(HOOK_S1),s2=pick(HOOK_S2),s3=pick(HOOK_S3);
+  return{long:[`${a} ${b}`,t,`${a} ${b}`,t].join("\n"),short:[`${s1} ${s1} ${s1}${s2}`,`${s1} ${s1} ${s1}${s2}`,s3,s3].join("\n")}}
+const VOCABLE=/^(?:woo+|wooyeah|ooh+|oh+|ah+|la+|da+|na+|doo+|wah|uh+|yeah|whoa|hey|eh|ya|bop|bah|mm+|hmm+|wuh|e|[a-z]+(?:yeah|whoa|hey|ah|oh)|[~,.!…-]+)$/i;
+const isVocable=l=>{const w=String(l).toLowerCase().replace(/[~,.!…]/g," ").split(/\s+/).filter(Boolean);return w.length>0&&w.every(x=>VOCABLE.test(x))};
+function lxClash(line,C){if(isVocable(line))return false;const n=lxNorm(line);if(C.set.has(n))return true;if(lxGrams(line).some(g=>C.grams.has(g)))return true;return!!C.grams4&&lxGrams(line,4).some(g=>C.grams4.has(g))}
 const LX_STOP=new Set("just stay play with from your that this into past near behind across beside inside under once more the and for until till when while every other around before after since between".split(" "));
 const lxWords=en=>lxNorm(en).split(" ").filter(w=>w.length>=4&&!LX_STOP.has(w));
 function lxTake(gen,mood,C,own){
@@ -835,9 +845,12 @@ function makeLyricsSet(c){
   const v1=take(4),ch=[hook,...take(3)].filter(Boolean),v2=take(4),br=take(2);
   const L=(arr,i)=>arr.map(x=>x[i]).join("\n");
   const vl=c.lang==="en"?0:1,cl=c.lang==="ko"?1:0;
-  const suno=`[Intro: soft ${S.inst[0]}]\n\n[Verse 1]\n${L(v1,vl)}\n\n[Chorus]\n${L(ch,cl)}\n\n[Instrumental Break: ${S.lead}]\n\n[Verse 2]\n${L(v2,vl)}\n\n[Chorus]\n${L(ch,cl)}\n\n[Bridge]\n${L(br,vl)}\n\n[Outro: gentle fade out]\n\n[End]`;
-  const en=`[Verse 1]\n${L(v1,0)}\n\n[Chorus]\n${L(ch,0)}\n\n[Verse 2]\n${L(v2,0)}\n\n[Chorus]\n${L(ch,0)}\n\n[Bridge]\n${L(br,0)}`;
-  const ko=`[1절]\n${L(v1,1)}\n\n[후렴]\n${L(ch,1)}\n\n[2절]\n${L(v2,1)}\n\n[후렴]\n${L(ch,1)}\n\n[브릿지]\n${L(br,1)}`;
+  // Optional hook (a repeated vocal phrase) at the start and/or before each chorus.
+  const hm=c.hook||"none",hk=hm!=="none"?makeHook():null;
+  const HS=hm==="start"||hm==="both"?`[Hook 1]\n${hk.short}\n\n`:"",HC=hm==="chorus"||hm==="both"?`[Hook]\n${hk.long}\n\n`:"";
+  const suno=`[Intro: soft ${S.inst[0]}]\n\n${HS}[Verse 1]\n${L(v1,vl)}\n\n${HC}[Chorus]\n${L(ch,cl)}\n\n[Instrumental Break: ${S.lead}]\n\n[Verse 2]\n${L(v2,vl)}\n\n${HC}[Chorus]\n${L(ch,cl)}\n\n[Bridge]\n${L(br,vl)}\n\n[Outro: gentle fade out]\n\n[End]`;
+  const en=`${HS}[Verse 1]\n${L(v1,0)}\n\n${HC}[Chorus]\n${L(ch,0)}\n\n[Verse 2]\n${L(v2,0)}\n\n${HC}[Chorus]\n${L(ch,0)}\n\n[Bridge]\n${L(br,0)}`;
+  const ko=`${HS}[1절]\n${L(v1,1)}\n\n${HC}[후렴]\n${L(ch,1)}\n\n[2절]\n${L(v2,1)}\n\n${HC}[후렴]\n${L(ch,1)}\n\n[브릿지]\n${L(br,1)}`;
   return{suno,en,ko};
 }
 function makeLyrics(c){return makeLyricsSet(c).suno}
@@ -1226,6 +1239,7 @@ Vocal: ${VOCAL[c.vocal]}. Language: ${langTxt}.
 Rules:
 - Use Suno section tags on their own lines: [Intro: ...], [Verse 1], [Chorus], [Instrumental Break: ${STYLES[c.style].lead}], [Verse 2], [Chorus], [Bridge], [Outro: gentle fade out], [End].
 - 4 short lines per verse, 4 lines per chorus, 2 lines bridge. Simple, warm, concrete everyday images (cups, windows, weather, streets). Easy to sing, gentle repetition in the chorus.
+- ${c.hook&&c.hook!=="none"?`Add a catchy repeated vocal hook made of sounds (like "woo woo woo woo wah uh / yeah e yeah e yeah ~eh"), labelled [Hook], ${c.hook==="start"?"right after the intro":c.hook==="both"?"right after the intro and before each chorus":"right before each chorus"}. Include it in all three versions.`:""}
 - Do not quote or imitate any existing song, and never mention real artists, brands or song titles. Avoid stock phrases; every line must be fresh.
 - Return JSON only: {"suno": the lyrics with all the tags above, in ${langTxt}; "en": the same lyrics in natural English with only [Verse 1], [Chorus], [Verse 2], [Bridge] labels; "ko": a natural Korean translation of "en", line by line, with labels [1절], [후렴], [2절], [브릿지]}.`;
   try{
@@ -1430,8 +1444,8 @@ function rebuildSuno(s){
   const en=lyrSections(s.lyricsEn),ko=lyrSections(s.lyricsKo);
   const base=(lang==="ko"?ko:en).length?(lang==="ko"?ko:en):(en.length?en:ko);
   const pickSec=(i,isChorus)=>{const useKo=lang==="ko"||(lang==="mix"&&!isChorus);const src=useKo?(ko[i]||en[i]):(en[i]||ko[i]);return src?src.lines:[]};
-  let body=[];base.forEach((sec,i)=>{const lab=SEC_EN[sec.lab]||sec.lab||"Verse";const isCh=/chorus|후렴/i.test(lab);const lines=pickSec(i,isCh);if(!lines.length)return;
-    body.push(`[${lab}]\n${lines.join("\n")}`);if(i===1)body.push(`[Instrumental Break: ${S.lead}]`)});
+  let body=[],brk=false;base.forEach((sec,i)=>{const lab=SEC_EN[sec.lab]||sec.lab||"Verse";const isCh=/chorus|후렴/i.test(lab);const lines=pickSec(i,isCh);if(!lines.length)return;
+    body.push(`[${lab}]\n${lines.join("\n")}`);if(isCh&&!brk){brk=true;body.push(`[Instrumental Break: ${S.lead}]`)}});
   return `[Intro: soft ${S.inst[0]}]\n\n${body.join("\n\n")}\n\n[Outro: gentle fade out]\n\n[End]`;
 }
 function startEdit(btn){
@@ -1663,7 +1677,7 @@ document.addEventListener("click",e=>{
   const s=e.target.closest("[data-song]");if(s){copy(songText(list[+s.dataset.song]));return}
 });
 $("reroll").onclick=()=>{renderOne();$("aiNote").textContent=""};
-["mood","place","style","vocal","lang"].forEach(id=>$(id).addEventListener("change",()=>{save();renderOne();renderYT();$("aiNote").textContent=""}));
+["mood","place","style","vocal","lang","hook"].forEach(id=>$(id).addEventListener("change",()=>{save();renderOne();renderYT();$("aiNote").textContent=""}));
 ["channel","avg"].forEach(id=>$(id).addEventListener("change",()=>{save();syncTracks()}));
 
 let ytSel=null; // index in list of the song the upload texts are written for (null = whole playlist)
